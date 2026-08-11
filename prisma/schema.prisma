@@ -1,0 +1,268 @@
+// ZapVago — schema do banco de dados
+// Micro SaaS de agendamento inteligente via WhatsApp
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Business {
+  id                     String    @id @default(cuid())
+  name                   String
+  slug                   String    @unique
+  category               Category
+  phone                  String    @unique
+  address                String?
+  timezone               String    @default("America/Sao_Paulo")
+  whatsappConnected      Boolean   @default(false)
+  whatsappProviderConfig Json?
+
+  // settings: workingHours, blockedSlots, slotDuration, reminderHours,
+  // autoConfirm, allowCancel, cancelDeadlineHours, language, timezone
+  settings Json @default("{}")
+
+  services      Service[]
+  professionals Professional[]
+  appointments  Appointment[]
+  clients       Client[]
+  conversations Conversation[]
+  loyaltyRules  LoyaltyRule[]
+  flashSales    FlashSale[]
+  waitingList   WaitingListEntry[]
+  silentRules   SilentRule[]
+  owner         Owner?
+
+  createdAt DateTime @default(now())
+}
+
+model Owner {
+  id         String   @id @default(cuid())
+  businessId String   @unique
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  name       String
+  email      String   @unique
+  password   String
+  phone      String
+
+  // notifyOn: { newAppointment, dailyReport, weeklyReport, sentimentAlert, channel }
+  notifyOn Json @default("{}")
+
+  createdAt DateTime @default(now())
+}
+
+model Service {
+  id            String   @id @default(cuid())
+  businessId    String
+  business      Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  name          String
+  duration      Int // minutos
+  price         Float
+  color         String   @default("#4F46E5")
+  category      String? // "cabelo", "barba", "unhas", "pele", "consulta"
+  active        Boolean  @default(true)
+  order         Int      @default(0)
+  comboOf       String[] // IDs de serviços que formam combo com este
+  comboDiscount Float? // percentual de desconto no combo
+
+  appointments Appointment[]
+
+  @@index([businessId])
+}
+
+model Professional {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  name       String
+  color      String   @default("#10B981")
+  serviceIds String[] // IDs dos serviços que este profissional faz
+  active     Boolean  @default(true)
+
+  appointments Appointment[]
+
+  @@index([businessId])
+}
+
+model Client {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  name       String
+  phone      String
+  language   String   @default("pt-BR")
+  notes      String?
+  tags       String[] // "vip", "fiel", "novo", "sumido", "problema"
+  alergias   String[] // "amônia", "látex", "parabenos"
+
+  // preferencias: { professionalPreference, servicePreference, bestDays, bestTimes }
+  preferencias Json @default("{}")
+
+  totalVisits         Int       @default(0)
+  totalSpent          Float     @default(0)
+  lastVisitAt         DateTime?
+  avgIntervalDays      Float?
+  noShowCount          Int       @default(0)
+  noShowRate           Float     @default(0)
+  loyaltyPoints        Int       @default(0)
+  predictedNoShowRisk  Float     @default(0)
+  lastContactedAt      DateTime?
+  silencedUntil        DateTime?
+  requiresPrepayment   Boolean   @default(false)
+
+  createdAt DateTime @default(now())
+
+  appointments  Appointment[]
+  conversations Conversation[]
+  waitingList   WaitingListEntry[]
+
+  @@unique([businessId, phone])
+  @@index([businessId])
+}
+
+model Appointment {
+  id             String       @id @default(cuid())
+  businessId     String
+  business       Business     @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  clientId       String
+  client         Client       @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  serviceId      String
+  service        Service      @relation(fields: [serviceId], references: [id])
+  professionalId String
+  professional   Professional @relation(fields: [professionalId], references: [id])
+
+  date    DateTime
+  endTime DateTime
+  status  Status   @default(CONFIRMED)
+  notes   String?
+  source  Source   @default(WHATSAPP)
+
+  reminderSent24  Boolean @default(false)
+  reminderSent1   Boolean @default(false)
+  clientConfirmed Boolean @default(false)
+  noShowPredicted Float   @default(0)
+  upsellOffered   Boolean @default(false)
+  upsellAccepted  Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([businessId, date])
+  @@index([professionalId, date])
+}
+
+enum Category {
+  BARBER
+  SALON
+  AESTHETIC_CLINIC
+  MANICURE
+  DENTAL_CLINIC
+  TATTOO_STUDIO
+  PET_SHOP
+  OTHER
+}
+
+enum Status {
+  CONFIRMED
+  PENDING_CONFIRMATION
+  CANCELLED
+  NO_SHOW
+  COMPLETED
+}
+
+enum Source {
+  WHATSAPP
+  MANUAL
+  PHONE_CALL
+  FLASH_SALE
+}
+
+model Conversation {
+  id          String             @id @default(cuid())
+  businessId  String
+  business    Business           @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  clientId    String?
+  client      Client?            @relation(fields: [clientId], references: [id])
+  clientPhone String
+  clientName  String?
+  status      ConversationStatus @default(BOT_HANDLING)
+
+  // [{role:"client"|"bot"|"owner", content, timestamp, sentiment}]
+  messages Json @default("[]")
+
+  sentiment      String?
+  language       String   @default("pt-BR")
+  summary        String?
+  needsAttention Boolean  @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([businessId, status])
+}
+
+enum ConversationStatus {
+  BOT_HANDLING
+  NEEDS_HUMAN
+  HUMAN_HANDLING
+  RESOLVED
+}
+
+model LoyaltyRule {
+  id              String   @id @default(cuid())
+  businessId      String
+  business        Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  visitsRequired  Int
+  rewardServiceId String
+  rewardDiscount  Float
+  active          Boolean  @default(true)
+}
+
+model FlashSale {
+  id              String   @id @default(cuid())
+  businessId      String
+  business        Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  name            String
+  discountPercent Float
+  serviceIds      String[]
+  professionalIds String[]
+  startDate       DateTime
+  endDate         DateTime
+  daysOfWeek      Int[] // 1=seg ... 7=dom
+  timeStart       String // "10:00"
+  timeEnd         String // "14:00"
+  targetClients   String[] // "sumido", "novo", "vip", "todos"
+  message         String?
+  sentCount       Int      @default(0)
+  bookedCount     Int      @default(0)
+  active          Boolean  @default(true)
+  createdAt       DateTime @default(now())
+}
+
+model WaitingListEntry {
+  id              String   @id @default(cuid())
+  businessId      String
+  business        Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  clientId        String
+  client          Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  serviceId       String
+  preferredDate   DateTime
+  flexibleDates   Boolean  @default(true)
+  preferredPeriod String? // "morning", "afternoon", "evening"
+  notified        Boolean  @default(false)
+  createdAt       DateTime @default(now())
+}
+
+// Diferencial 9 — Modo Silencioso: regras automáticas para clientes problemáticos
+model SilentRule {
+  id          String   @id @default(cuid())
+  businessId  String
+  business    Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  trigger     String // "noshow_3x" | "price_asked_3x_no_book" | "late_cancel_2x"
+  action      String // "require_prepayment" | "silence_offers_30d" | "require_confirmation"
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+}
