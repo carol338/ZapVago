@@ -69,6 +69,7 @@ model Service {
   comboDiscount Float? // percentual de desconto no combo
 
   appointments Appointment[]
+  waitingListEntries WaitingListEntry[]
 
   @@index([businessId])
 }
@@ -249,6 +250,7 @@ model WaitingListEntry {
   clientId        String
   client          Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
   serviceId       String
+  service         Service  @relation(fields: [serviceId], references: [id])
   preferredDate   DateTime
   flexibleDates   Boolean  @default(true)
   preferredPeriod String? // "morning", "afternoon", "evening"

@@ -78,7 +78,7 @@ export async function askClaude(systemPrompt: string, userMessage: string, histo
 
   try {
     const messages = [
-      ...history.map((h: any) => ({ role: h.role === "client" ? "user" : "assistant", content: h.content })),
+      ...history.map((h: any) => ({ role: (h.role === "client" ? "user" : "assistant") as "user" | "assistant", content: h.content })),
       { role: "user" as const, content: userMessage },
     ];
 
