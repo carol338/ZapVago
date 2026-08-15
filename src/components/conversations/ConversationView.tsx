@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -20,7 +21,7 @@ const SENTIMENT_COLOR: Record<string, string> = {
   negative: "border-l-risk-high",
 };
 
-export function ConversationView({ conversationId }: { conversationId: string }) {
+export function ConversationView({ conversationId, onBack }: { conversationId: string; onBack?: () => void }) {
   const [conversation, setConversation] = useState<any>(null);
   const [reply, setReply] = useState("");
   const [sending, setSending] = useState(false);
@@ -68,16 +69,27 @@ export function ConversationView({ conversationId }: { conversationId: string })
 
   return (
     <div className="flex flex-1 flex-col">
-      <div className="flex items-center justify-between border-b border-surface-border p-4">
-        <div>
-          <p className="font-semibold">{conversation.clientName ?? conversation.clientPhone}</p>
-          <p className="text-xs text-foreground/40">{conversation.clientPhone}</p>
+      <div className="flex items-center justify-between gap-2 border-b border-surface-border p-3 sm:p-4">
+        <div className="flex min-w-0 items-center gap-2">
+          {onBack && (
+            <button
+              onClick={onBack}
+              aria-label="Voltar para a lista"
+              className="shrink-0 rounded-lg p-1.5 text-foreground/60 hover:bg-surface-hover md:hidden"
+            >
+              <ArrowLeft size={18} />
+            </button>
+          )}
+          <div className="min-w-0">
+            <p className="truncate font-semibold">{conversation.clientName ?? conversation.clientPhone}</p>
+            <p className="truncate text-xs text-foreground/40">{conversation.clientPhone}</p>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2">
           {conversation.status === "HUMAN_HANDLING" ? (
-            <Button size="sm" variant="secondary" onClick={release}>Devolver para o bot</Button>
+            <Button size="sm" variant="secondary" onClick={release}>Devolver</Button>
           ) : (
-            <Button size="sm" onClick={assume}>Assumir conversa</Button>
+            <Button size="sm" onClick={assume}>Assumir</Button>
           )}
         </div>
       </div>

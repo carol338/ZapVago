@@ -71,7 +71,7 @@ export function BusinessSettings() {
           {DIAS.map((d) => {
             const hours = settings.workingHours?.[d.key];
             return (
-              <div key={d.key} className="flex items-center gap-3">
+              <div key={d.key} className="flex flex-wrap items-center gap-x-3 gap-y-2">
                 <button
                   type="button"
                   onClick={() =>
@@ -80,20 +80,21 @@ export function BusinessSettings() {
                       workingHours: { ...settings.workingHours, [d.key]: hours ? null : { start: "09:00", end: "19:00" } },
                     })
                   }
-                  className={`h-5 w-9 rounded-full transition-colors ${hours ? "bg-zap" : "bg-surface-border"}`}
+                  className={`h-5 w-9 shrink-0 rounded-full transition-colors ${hours ? "bg-zap" : "bg-surface-border"}`}
                 >
                   <div className={`h-4 w-4 rounded-full bg-white transition-transform ${hours ? "translate-x-4" : "translate-x-0.5"}`} />
                 </button>
-                <span className="w-20 text-sm">{d.label}</span>
+                <span className="w-16 shrink-0 text-sm sm:w-20">{d.label}</span>
                 {hours && (
-                  <>
-                    <Input type="time" className="w-28" value={hours.start} onChange={(e) =>
+                  <div className="flex items-center gap-2">
+                    <Input type="time" className="w-[6.5rem]" value={hours.start} onChange={(e) =>
                       setSettings({ ...settings, workingHours: { ...settings.workingHours, [d.key]: { ...hours, start: e.target.value } } })
                     } />
-                    <Input type="time" className="w-28" value={hours.end} onChange={(e) =>
+                    <span className="text-foreground/40">até</span>
+                    <Input type="time" className="w-[6.5rem]" value={hours.end} onChange={(e) =>
                       setSettings({ ...settings, workingHours: { ...settings.workingHours, [d.key]: { ...hours, end: e.target.value } } })
                     } />
-                  </>
+                  </div>
                 )}
               </div>
             );

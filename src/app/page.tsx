@@ -61,9 +61,9 @@ export default function LandingPage() {
           O ZapVago não é só um agendador. Ele lembra preferências, prevê faltas, faz upsell,
           preenche horários vagos e entrega inteligência de negócio — tudo automático, no WhatsApp.
         </p>
-        <div className="mt-8 flex justify-center gap-3">
-          <Link href="/register"><Button size="lg">Criar minha conta grátis</Button></Link>
-          <Link href="#diferenciais"><Button variant="secondary" size="lg">Ver diferenciais</Button></Link>
+        <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
+          <Link href="/register"><Button size="lg" className="w-full sm:w-auto">Criar minha conta grátis</Button></Link>
+          <Link href="#diferenciais"><Button variant="secondary" size="lg" className="w-full sm:w-auto">Ver diferenciais</Button></Link>
         </div>
       </section>
 

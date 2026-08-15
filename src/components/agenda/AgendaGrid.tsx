@@ -105,12 +105,12 @@ export function AgendaGrid() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+        <div className="flex items-center justify-center gap-2 sm:justify-start">
           <Button variant="secondary" size="sm" onClick={() => setWeekStart(subWeeks(weekStart, 1))}>
             <ChevronLeft size={16} />
           </Button>
-          <span className="min-w-[180px] text-center text-sm font-medium">
+          <span className="min-w-[160px] text-center text-sm font-medium sm:min-w-[180px]">
             {format(weekStart, "dd/MM", { locale: ptBR })} — {format(addDays(weekStart, 6), "dd/MM/yyyy", { locale: ptBR })}
           </span>
           <Button variant="secondary" size="sm" onClick={() => setWeekStart(addWeeks(weekStart, 1))}>
@@ -118,17 +118,17 @@ export function AgendaGrid() {
           </Button>
         </div>
 
-        <div className="flex items-center gap-2">
-          <Select value={professionalFilter} onChange={(e) => setProfessionalFilter(e.target.value)} className="w-44">
+        <div className="flex flex-wrap items-center gap-2">
+          <Select value={professionalFilter} onChange={(e) => setProfessionalFilter(e.target.value)} className="w-full sm:w-44">
             <option value="">Todos os profissionais</option>
             {professionals.map((p) => (
               <option key={p.id} value={p.id}>{p.name}</option>
             ))}
           </Select>
-          <Button variant="secondary" size="sm" onClick={() => window.print()}>
+          <Button variant="secondary" size="sm" className="flex-1 sm:flex-none" onClick={() => window.print()}>
             <Printer size={16} className="mr-1" /> Exportar
           </Button>
-          <Button size="sm" onClick={() => setFlashSaleOpen(true)}>
+          <Button size="sm" className="flex-1 sm:flex-none" onClick={() => setFlashSaleOpen(true)}>
             <Zap size={16} className="mr-1" /> Feirão
           </Button>
         </div>

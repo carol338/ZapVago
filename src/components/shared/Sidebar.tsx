@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import { signOut } from "next-auth/react";
 import { cn } from "@/lib/utils";
 import {
@@ -14,6 +15,8 @@ import {
   Settings,
   MessageCircle,
   LogOut,
+  Menu,
+  X,
 } from "lucide-react";
 
 const NAV = [
@@ -26,45 +29,117 @@ const NAV = [
   { href: "/dashboard/settings", label: "Configurações", icon: Settings },
 ];
 
+function NavList({ pathname, onNavigate }: { pathname: string; onNavigate?: () => void }) {
+  return (
+    <nav className="flex-1 space-y-1 p-3">
+      {NAV.map((item) => {
+        const active = pathname === item.href;
+        return (
+          <Link
+            key={item.href}
+            href={item.href}
+            onClick={onNavigate}
+            className={cn(
+              "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+              active ? "bg-zap/15 text-zap-light" : "text-foreground/70 hover:bg-surface-hover hover:text-foreground"
+            )}
+          >
+            <item.icon size={18} />
+            {item.label}
+          </Link>
+        );
+      })}
+    </nav>
+  );
+}
+
 export function Sidebar({ businessName }: { businessName?: string }) {
   const pathname = usePathname();
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    setOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    document.body.style.overflow = open ? "hidden" : "";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [open]);
 
   return (
-    <aside className="flex w-60 flex-col border-r border-surface-border bg-surface">
-      <div className="flex items-center gap-2 border-b border-surface-border px-5 py-4">
-        <MessageCircle className="text-zap" size={22} />
-        <span className="font-bold">ZapVago</span>
-      </div>
-
-      <nav className="flex-1 space-y-1 p-3">
-        {NAV.map((item) => {
-          const active = pathname === item.href;
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                active ? "bg-zap/15 text-zap-light" : "text-foreground/70 hover:bg-surface-hover hover:text-foreground"
-              )}
-            >
-              <item.icon size={18} />
-              {item.label}
-            </Link>
-          );
-        })}
-      </nav>
-
-      <div className="border-t border-surface-border p-3">
-        {businessName && <p className="mb-2 truncate px-3 text-xs text-foreground/50">{businessName}</p>}
+    <>
+      {/* Barra superior — só em mobile */}
+      <div className="sticky top-0 z-30 flex items-center justify-between border-b border-surface-border bg-surface px-4 py-3 md:hidden">
+        <div className="flex items-center gap-2">
+          <MessageCircle className="text-zap" size={20} />
+          <span className="font-bold">ZapVago</span>
+        </div>
         <button
-          onClick={() => signOut({ callbackUrl: "/login" })}
-          className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-foreground/70 hover:bg-surface-hover hover:text-foreground"
+          onClick={() => setOpen(true)}
+          aria-label="Abrir menu"
+          className="rounded-lg p-2 text-foreground/70 hover:bg-surface-hover"
         >
-          <LogOut size={18} />
-          Sair
+          <Menu size={22} />
         </button>
       </div>
-    </aside>
+
+      {/* Drawer — só em mobile */}
+      {open && (
+        <div className="fixed inset-0 z-50 md:hidden">
+          <div className="absolute inset-0 bg-black/60" onClick={() => setOpen(false)} />
+          <aside className="absolute inset-y-0 left-0 flex w-72 max-w-[80vw] flex-col border-r border-surface-border bg-surface">
+            <div className="flex items-center justify-between border-b border-surface-border px-5 py-4">
+              <div className="flex items-center gap-2">
+                <MessageCircle className="text-zap" size={22} />
+                <span className="font-bold">ZapVago</span>
+              </div>
+              <button
+                onClick={() => setOpen(false)}
+                aria-label="Fechar menu"
+                className="rounded-lg p-2 text-foreground/70 hover:bg-surface-hover"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <NavList pathname={pathname} onNavigate={() => setOpen(false)} />
+
+            <div className="border-t border-surface-border p-3">
+              {businessName && <p className="mb-2 truncate px-3 text-xs text-foreground/50">{businessName}</p>}
+              <button
+                onClick={() => signOut({ callbackUrl: "/login" })}
+                className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-foreground/70 hover:bg-surface-hover hover:text-foreground"
+              >
+                <LogOut size={18} />
+                Sair
+              </button>
+            </div>
+          </aside>
+        </div>
+      )}
+
+      {/* Sidebar fixa — só em desktop */}
+      <aside className="hidden md:sticky md:top-0 md:flex md:h-screen md:w-60 md:shrink-0 md:flex-col md:border-r md:border-surface-border md:bg-surface">
+        <div className="flex items-center gap-2 border-b border-surface-border px-5 py-4">
+          <MessageCircle className="text-zap" size={22} />
+          <span className="font-bold">ZapVago</span>
+        </div>
+
+        <NavList pathname={pathname} />
+
+        <div className="border-t border-surface-border p-3">
+          {businessName && <p className="mb-2 truncate px-3 text-xs text-foreground/50">{businessName}</p>}
+          <button
+            onClick={() => signOut({ callbackUrl: "/login" })}
+            className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-foreground/70 hover:bg-surface-hover hover:text-foreground"
+          >
+            <LogOut size={18} />
+            Sair
+          </button>
+        </div>
+      </aside>
+    </>
   );
 }

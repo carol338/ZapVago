@@ -35,24 +35,26 @@ export function ClientTable() {
 
   return (
     <div>
-      <div className="mb-4 flex flex-wrap gap-2">
-        <div className="relative flex-1 min-w-[200px]">
+      <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+        <div className="relative flex-1 sm:min-w-[200px]">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-foreground/40" />
           <Input className="pl-9" placeholder="Buscar por nome ou telefone..." value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
-        <Select value={tag} onChange={(e) => setTag(e.target.value)} className="w-40">
-          <option value="">Todas as tags</option>
-          <option value="vip">VIP</option>
-          <option value="fiel">Fiel</option>
-          <option value="novo">Novo</option>
-          <option value="sumido">Sumido</option>
-          <option value="problema">Problema</option>
-        </Select>
-        <Select value={sort} onChange={(e) => setSort(e.target.value)} className="w-44">
-          <option value="name">Ordenar: Nome</option>
-          <option value="totalSpent">Ordenar: Gasto total</option>
-          <option value="lastVisit">Ordenar: Última visita</option>
-        </Select>
+        <div className="flex gap-2">
+          <Select value={tag} onChange={(e) => setTag(e.target.value)} className="w-1/2 sm:w-40">
+            <option value="">Todas as tags</option>
+            <option value="vip">VIP</option>
+            <option value="fiel">Fiel</option>
+            <option value="novo">Novo</option>
+            <option value="sumido">Sumido</option>
+            <option value="problema">Problema</option>
+          </Select>
+          <Select value={sort} onChange={(e) => setSort(e.target.value)} className="w-1/2 sm:w-44">
+            <option value="name">Ordenar: Nome</option>
+            <option value="totalSpent">Ordenar: Gasto total</option>
+            <option value="lastVisit">Ordenar: Última visita</option>
+          </Select>
+        </div>
       </div>
 
       <div className="overflow-x-auto rounded-xl border border-surface-border bg-surface">

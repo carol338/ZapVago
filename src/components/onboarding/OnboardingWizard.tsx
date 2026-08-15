@@ -195,7 +195,7 @@ export function OnboardingWizard({ category }: { category: string }) {
           <Label>Horários de funcionamento</Label>
           <div className="mb-4 space-y-2">
             {DIAS.map((d) => (
-              <div key={d.key} className="flex items-center gap-3">
+              <div key={d.key} className="flex flex-wrap items-center gap-x-3 gap-y-2">
                 <button
                   type="button"
                   onClick={() =>
@@ -204,27 +204,27 @@ export function OnboardingWizard({ category }: { category: string }) {
                       [d.key]: prev[d.key] ? null : { start: "09:00", end: "19:00" },
                     }))
                   }
-                  className={`h-5 w-9 rounded-full transition-colors ${workingHours[d.key] ? "bg-zap" : "bg-surface-border"}`}
+                  className={`h-5 w-9 shrink-0 rounded-full transition-colors ${workingHours[d.key] ? "bg-zap" : "bg-surface-border"}`}
                 >
                   <div className={`h-4 w-4 rounded-full bg-white transition-transform ${workingHours[d.key] ? "translate-x-4" : "translate-x-0.5"}`} />
                 </button>
-                <span className="w-20 text-sm">{d.label}</span>
+                <span className="w-16 shrink-0 text-sm sm:w-20">{d.label}</span>
                 {workingHours[d.key] && (
-                  <>
+                  <div className="flex items-center gap-2">
                     <Input
                       type="time"
-                      className="w-28"
+                      className="w-[6.5rem]"
                       value={workingHours[d.key]!.start}
                       onChange={(e) => setWorkingHours((prev) => ({ ...prev, [d.key]: { ...prev[d.key]!, start: e.target.value } }))}
                     />
                     <span className="text-foreground/40">até</span>
                     <Input
                       type="time"
-                      className="w-28"
+                      className="w-[6.5rem]"
                       value={workingHours[d.key]!.end}
                       onChange={(e) => setWorkingHours((prev) => ({ ...prev, [d.key]: { ...prev[d.key]!, end: e.target.value } }))}
                     />
-                  </>
+                  </div>
                 )}
               </div>
             ))}
@@ -233,7 +233,7 @@ export function OnboardingWizard({ category }: { category: string }) {
           <Label>Bloqueios fixos (ex: almoço)</Label>
           <div className="mb-2 space-y-2">
             {blockedSlots.map((b, i) => (
-              <div key={i} className="flex items-center gap-2">
+              <div key={i} className="flex flex-wrap items-center gap-2">
                 <Input className="w-28" placeholder="Rótulo" value={b.label} onChange={(e) => {
                   const copy = [...blockedSlots]; copy[i].label = e.target.value; setBlockedSlots(copy);
                 }} />
@@ -284,8 +284,8 @@ export function OnboardingWizard({ category }: { category: string }) {
           <Label>Serviços</Label>
           <div className="mb-4 space-y-2">
             {services.map((s, i) => (
-              <div key={i} className="flex items-center gap-2">
-                <Input className="flex-1" placeholder="Nome do serviço" value={s.name} onChange={(e) => {
+              <div key={i} className="flex flex-wrap items-center gap-2">
+                <Input className="min-w-0 flex-1 basis-full sm:basis-auto" placeholder="Nome do serviço" value={s.name} onChange={(e) => {
                   const copy = [...services]; copy[i] = { ...copy[i], name: e.target.value }; setServices(copy);
                 }} />
                 <Input type="number" className="w-24" placeholder="Min" value={s.duration} onChange={(e) => {
@@ -311,7 +311,7 @@ export function OnboardingWizard({ category }: { category: string }) {
           <div className="mb-6 space-y-2">
             {professionals.map((p, i) => (
               <div key={i} className="flex items-center gap-2">
-                <Input className="flex-1" placeholder="Nome do profissional" value={p.name} onChange={(e) => {
+                <Input className="min-w-0 flex-1" placeholder="Nome do profissional" value={p.name} onChange={(e) => {
                   const copy = [...professionals]; copy[i] = { ...copy[i], name: e.target.value }; setProfessionals(copy);
                 }} />
                 <input type="color" value={p.color} onChange={(e) => {

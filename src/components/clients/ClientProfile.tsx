@@ -89,10 +89,10 @@ export function ClientProfile({ clientId }: { clientId: string }) {
         <CardHeader><CardTitle>Histórico de agendamentos</CardTitle></CardHeader>
         <div className="space-y-2">
           {client.appointments?.map((a: any) => (
-            <div key={a.id} className="flex items-center justify-between rounded-lg bg-background p-3 text-sm">
-              <div className="flex items-center gap-2">
-                <Calendar size={14} className="text-foreground/40" />
-                <span>{format(new Date(a.date), "dd/MM/yyyy", { locale: ptBR })}</span>
+            <div key={a.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-background p-3 text-sm">
+              <div className="flex min-w-0 flex-wrap items-center gap-2">
+                <Calendar size={14} className="shrink-0 text-foreground/40" />
+                <span className="shrink-0">{format(new Date(a.date), "dd/MM/yyyy", { locale: ptBR })}</span>
                 <span className="text-foreground/50">{a.service.name} com {a.professional.name}</span>
               </div>
               <Badge variant={a.status === "COMPLETED" ? "success" : a.status === "NO_SHOW" ? "danger" : "default"}>{a.status}</Badge>
