@@ -7,17 +7,17 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        background: "#0A0A0B",
-        foreground: "#FAFAFA",
+        background: "var(--color-background)",
+        foreground: "var(--color-foreground)",
         zap: {
           DEFAULT: "#00A884",
           dark: "#00806A",
           light: "#06CF9C",
         },
         surface: {
-          DEFAULT: "#141416",
-          hover: "#1C1C1F",
-          border: "#26262A",
+          DEFAULT: "var(--color-surface)",
+          hover: "var(--color-surface-hover)",
+          border: "var(--color-surface-border)",
         },
         risk: {
           low: "#10B981",

@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { formatCurrency } from "@/lib/utils";
 import { format } from "date-fns";
 import { Search } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const TAG_VARIANT: Record<string, "default" | "success" | "warning" | "danger" | "info"> = {
   vip: "info",
@@ -22,13 +23,20 @@ export function ClientTable() {
   const [search, setSearch] = useState("");
   const [tag, setTag] = useState("");
   const [sort, setSort] = useState("name");
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    setLoading(true);
     const params = new URLSearchParams({ sort });
     if (search) params.set("search", search);
     if (tag) params.set("tag", tag);
     const t = setTimeout(() => {
-      fetch(`/api/clients?${params}`).then((r) => r.json()).then(setClients);
+      fetch(`/api/clients?${params}`)
+        .then((r) => r.json())
+        .then((data) => {
+          setClients(data);
+          setLoading(false);
+        });
     }, 300);
     return () => clearTimeout(t);
   }, [search, tag, sort]);
@@ -71,7 +79,17 @@ export function ClientTable() {
             </tr>
           </thead>
           <tbody>
-            {clients.map((c) => (
+            {loading &&
+              Array.from({ length: 5 }).map((_, i) => (
+                <tr key={`sk-${i}`} className="border-b border-surface-border last:border-0">
+                  {Array.from({ length: 7 }).map((_, j) => (
+                    <td key={j} className="p-3">
+                      <Skeleton className="h-4 w-full max-w-[100px]" />
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            {!loading && clients.map((c) => (
               <tr key={c.id} className="border-b border-surface-border last:border-0 hover:bg-surface-hover">
                 <td className="p-3">
                   <Link href={`/dashboard/clients/${c.id}`} className="font-medium text-zap-light hover:underline">
@@ -100,7 +118,7 @@ export function ClientTable() {
             ))}
           </tbody>
         </table>
-        {clients.length === 0 && <p className="p-6 text-center text-sm text-foreground/40">Nenhum cliente encontrado.</p>}
+        {!loading && clients.length === 0 && <p className="p-6 text-center text-sm text-foreground/40">Nenhum cliente encontrado.</p>}
       </div>
     </div>
   );

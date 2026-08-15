@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { FlashSaleModal } from "@/components/flash-sales/FlashSaleModal";
 import { Zap, Send, Calendar } from "lucide-react";
+import { Breadcrumbs } from "@/components/shared/Breadcrumbs";
 
 export default function FlashSalesPage() {
   const [flashSales, setFlashSales] = useState<any[]>([]);
@@ -25,6 +26,7 @@ export default function FlashSalesPage() {
 
   return (
     <div>
+      <Breadcrumbs items={[{ label: "Dashboard", href: "/dashboard" }, { label: "Feirões" }]} />
       <div className="mb-4 flex items-center justify-between">
         <h1 className="text-2xl font-bold">Feirões</h1>
         <Button onClick={() => setModalOpen(true)}><Zap size={16} className="mr-1" /> Criar feirão</Button>

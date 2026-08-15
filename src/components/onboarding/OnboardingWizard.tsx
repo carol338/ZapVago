@@ -243,7 +243,7 @@ export function OnboardingWizard({ category }: { category: string }) {
                 <Input type="time" className="w-24" value={b.end} onChange={(e) => {
                   const copy = [...blockedSlots]; copy[i].end = e.target.value; setBlockedSlots(copy);
                 }} />
-                <button onClick={() => setBlockedSlots(blockedSlots.filter((_, idx) => idx !== i))} className="text-foreground/40 hover:text-risk-high">
+                <button onClick={() => setBlockedSlots(blockedSlots.filter((_, idx) => idx !== i))} className="-m-2 flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-foreground/40 transition-colors hover:bg-risk-high/10 hover:text-risk-high">
                   <Trash2 size={16} />
                 </button>
               </div>
@@ -294,7 +294,7 @@ export function OnboardingWizard({ category }: { category: string }) {
                 <Input type="number" className="w-28" placeholder="R$" value={s.price} onChange={(e) => {
                   const copy = [...services]; copy[i] = { ...copy[i], price: Number(e.target.value) }; setServices(copy);
                 }} />
-                <button onClick={() => setServices(services.filter((_, idx) => idx !== i))} className="text-foreground/40 hover:text-risk-high">
+                <button onClick={() => setServices(services.filter((_, idx) => idx !== i))} className="-m-2 flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-foreground/40 transition-colors hover:bg-risk-high/10 hover:text-risk-high">
                   <Trash2 size={16} />
                 </button>
               </div>
@@ -317,7 +317,7 @@ export function OnboardingWizard({ category }: { category: string }) {
                 <input type="color" value={p.color} onChange={(e) => {
                   const copy = [...professionals]; copy[i] = { ...copy[i], color: e.target.value }; setProfessionals(copy);
                 }} className="h-9 w-9 rounded border border-surface-border bg-background" />
-                <button onClick={() => setProfessionals(professionals.filter((_, idx) => idx !== i))} className="text-foreground/40 hover:text-risk-high">
+                <button onClick={() => setProfessionals(professionals.filter((_, idx) => idx !== i))} className="-m-2 flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-foreground/40 transition-colors hover:bg-risk-high/10 hover:text-risk-high">
                   <Trash2 size={16} />
                 </button>
               </div>

@@ -2,13 +2,32 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
+:root,
+.light {
+  color-scheme: light;
+  --color-background: #FAFAFA;
+  --color-foreground: #0A0A0B;
+  --color-surface: #FFFFFF;
+  --color-surface-hover: #F1F1F2;
+  --color-surface-border: #E5E5E7;
+}
+
+.dark {
   color-scheme: dark;
+  --color-background: #0A0A0B;
+  --color-foreground: #FAFAFA;
+  --color-surface: #17181C;
+  --color-surface-hover: #1F2025;
+  --color-surface-border: #2A2B30;
 }
 
 body {
-  background-color: #0A0A0B;
-  color: #FAFAFA;
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+}
+
+* {
+  transition: background-color 150ms ease, border-color 150ms ease;
 }
 
 ::-webkit-scrollbar {
@@ -16,9 +35,75 @@ body {
   height: 8px;
 }
 ::-webkit-scrollbar-track {
-  background: #141416;
+  background: var(--color-surface);
 }
 ::-webkit-scrollbar-thumb {
-  background: #26262A;
+  background: var(--color-surface-border);
   border-radius: 4px;
+}
+
+/* Evita zoom automatico no iOS ao focar inputs */
+input,
+select,
+textarea {
+  font-size: 16px;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.page-fade-in {
+  animation: fade-in 200ms ease;
+}
+
+@keyframes modal-backdrop-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes modal-panel-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+}
+.modal-backdrop-in {
+  animation: modal-backdrop-in 200ms ease;
+}
+.modal-panel-in {
+  animation: modal-panel-in 200ms ease;
+}
+
+@keyframes dropdown-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+.dropdown-in {
+  animation: dropdown-in 150ms ease;
+}
+
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background-color: var(--color-surface-hover);
+}
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.06), transparent);
+  animation: shimmer 1.5s infinite;
 }

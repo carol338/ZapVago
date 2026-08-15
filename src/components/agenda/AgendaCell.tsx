@@ -1,7 +1,6 @@
 "use client";
 
 import { cn, formatCurrency } from "@/lib/utils";
-import { AlertTriangle } from "lucide-react";
 
 export interface CellAppointment {
   id: string;
@@ -14,12 +13,12 @@ export interface CellAppointment {
   risk: number;
 }
 
-const STATUS_STYLES: Record<string, string> = {
-  CONFIRMED: "bg-risk-low/15 border-risk-low/40",
-  PENDING_CONFIRMATION: "bg-risk-mid/15 border-risk-mid/40",
-  CANCELLED: "bg-risk-high/10 border-risk-high/30 opacity-60",
-  NO_SHOW: "bg-risk-high/15 border-risk-high/40",
-  COMPLETED: "bg-surface-hover border-surface-border",
+export const STATUS_BADGE: Record<string, { emoji: string; label: string; className: string }> = {
+  CONFIRMED: { emoji: "✅", label: "Confirmado", className: "bg-risk-low/15 text-risk-low" },
+  PENDING_CONFIRMATION: { emoji: "⏳", label: "Pendente", className: "bg-risk-mid/15 text-risk-mid" },
+  CANCELLED: { emoji: "❌", label: "Cancelado", className: "bg-risk-high/15 text-risk-high line-through" },
+  NO_SHOW: { emoji: "❌", label: "Faltou", className: "bg-risk-high/15 text-risk-high" },
+  COMPLETED: { emoji: "✅", label: "Concluído", className: "bg-surface-hover text-foreground/60" },
 };
 
 /** Célula da planilha de agenda — vazia (novo agendamento) ou preenchida (detalhes). */
@@ -52,6 +51,8 @@ export function AgendaCell({
   }
 
   const highRisk = appointment.risk >= 0.5 && appointment.status !== "COMPLETED" && appointment.status !== "CANCELLED";
+  const badge = STATUS_BADGE[appointment.status] ?? STATUS_BADGE.CONFIRMED;
+  const color = appointment.professionalColor || "#10B981";
 
   return (
     <div
@@ -60,22 +61,21 @@ export function AgendaCell({
       onDrop={onDrop}
       onDragOver={onDragOver}
       onClick={onClick}
-      className={cn(
-        "flex h-20 w-full cursor-pointer flex-col justify-between rounded-md border p-1.5 text-left text-xs transition-transform hover:scale-[1.02]",
-        STATUS_STYLES[appointment.status]
-      )}
-      style={{ borderLeftColor: appointment.professionalColor, borderLeftWidth: 3 }}
+      className="flex h-20 w-full cursor-pointer flex-col justify-between rounded-md border border-surface-border p-1.5 text-left text-xs transition-transform hover:scale-[1.02]"
+      style={{ borderLeftColor: color, borderLeftWidth: 4, backgroundColor: `${color}1A` }}
     >
       <div>
         <p className="truncate font-semibold">{appointment.clientName}</p>
         <p className="truncate text-foreground/60">{appointment.serviceName}</p>
       </div>
-      <div className="flex items-center justify-between">
-        <span className="truncate text-foreground/50">{appointment.professionalName}</span>
-        <span className="flex items-center gap-1 font-medium">
-          {highRisk && <AlertTriangle size={11} className="text-risk-mid" />}
-          {formatCurrency(appointment.price)}
+      <div className="flex flex-wrap items-center gap-1">
+        <span className={cn("rounded px-1 py-0.5 text-[10px] font-medium leading-none", badge.className)}>
+          {badge.emoji} {badge.label}
         </span>
+        {highRisk && (
+          <span className="rounded bg-orange-500/15 px-1 py-0.5 text-[10px] font-medium leading-none text-orange-400">⚠️</span>
+        )}
+        <span className="ml-auto font-medium">{formatCurrency(appointment.price)}</span>
       </div>
     </div>
   );

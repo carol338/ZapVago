@@ -4,14 +4,18 @@ import { useEffect, useState } from "react";
 import { ConversationList, ConversationSummary } from "@/components/conversations/ConversationList";
 import { ConversationView } from "@/components/conversations/ConversationView";
 import { Select } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Breadcrumbs } from "@/components/shared/Breadcrumbs";
 import { cn } from "@/lib/utils";
 
 export default function ConversationsPage() {
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState("");
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    setLoading(true);
     const params = new URLSearchParams();
     if (statusFilter) params.set("status", statusFilter);
     fetch(`/api/conversations?${params}`)
@@ -19,11 +23,13 @@ export default function ConversationsPage() {
       .then((data) => {
         setConversations(data);
         if (!selectedId && data[0]) setSelectedId(data[0].id);
+        setLoading(false);
       });
   }, [statusFilter]);
 
   return (
     <div>
+      <Breadcrumbs items={[{ label: "Dashboard", href: "/dashboard" }, { label: "Conversas" }]} />
       <h1 className="mb-4 text-2xl font-bold">Conversas</h1>
       <div className="mb-3">
         <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="w-full sm:w-56">
@@ -41,7 +47,15 @@ export default function ConversationsPage() {
             selectedId ? "hidden md:block" : "block"
           )}
         >
-          <ConversationList conversations={conversations} selectedId={selectedId} onSelect={setSelectedId} />
+          {loading ? (
+            <div className="space-y-3 p-3">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <Skeleton key={i} className="h-16 w-full" />
+              ))}
+            </div>
+          ) : (
+            <ConversationList conversations={conversations} selectedId={selectedId} onSelect={setSelectedId} />
+          )}
         </div>
         <div className={cn("min-w-0 flex-1 flex-col", selectedId ? "flex" : "hidden md:flex")}>
           {selectedId ? (

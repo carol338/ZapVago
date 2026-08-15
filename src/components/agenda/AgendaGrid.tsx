@@ -2,24 +2,29 @@
 
 /**
  * Planilha semanal de agendamentos — o painel principal do ZapVago.
- * Grid de dias x horários, com drag-and-drop para remarcar, filtro por
- * profissional, navegação entre semanas e resumo do dia.
+ * Desktop: grid de dias x horários, com drag-and-drop para remarcar.
+ * Mobile: lista vertical de um dia por vez (mais fácil de usar com o polegar).
  */
 import { Fragment, useEffect, useMemo, useState, useCallback } from "react";
 import { addDays, addWeeks, subWeeks, startOfWeek, format, isSameDay, setHours, setMinutes } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, Printer, Zap } from "lucide-react";
+import { ChevronLeft, ChevronRight, Printer, Zap, Plus, CalendarX2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
-import { AgendaCell, CellAppointment } from "./AgendaCell";
+import { Skeleton } from "@/components/ui/skeleton";
+import { AgendaCell, CellAppointment, STATUS_BADGE } from "./AgendaCell";
 import { NewAppointmentModal } from "./NewAppointmentModal";
 import { AppointmentDetailModal, AppointmentDetail } from "./AppointmentDetailModal";
 import { FlashSaleModal } from "@/components/flash-sales/FlashSaleModal";
-import { formatCurrency } from "@/lib/utils";
+import { cn, formatCurrency } from "@/lib/utils";
 
 const DIAS_LABEL = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
 const HORARIOS = Array.from({ length: 22 }, (_, i) => 8 + i * 0.5).filter((h) => h <= 19); // 08:00–19:00, passo 30min
+
+function hourLabel(hour: number) {
+  return `${String(Math.floor(hour)).padStart(2, "0")}:${hour % 1 === 0 ? "00" : "30"}`;
+}
 
 export function AgendaGrid() {
   const [weekStart, setWeekStart] = useState(startOfWeek(new Date(), { weekStartsOn: 1 }));
@@ -31,12 +36,20 @@ export function AgendaGrid() {
   const [detail, setDetail] = useState<AppointmentDetail | null>(null);
   const [flashSaleOpen, setFlashSaleOpen] = useState(false);
   const [draggedId, setDraggedId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [mobileDayIndex, setMobileDayIndex] = useState(() => {
+    const today = new Date();
+    const diff = Math.round((today.setHours(0, 0, 0, 0) - weekStart.setHours(0, 0, 0, 0)) / 86400000);
+    return diff >= 0 && diff <= 6 ? diff : 0;
+  });
 
   const loadAppointments = useCallback(async () => {
+    setLoading(true);
     const params = new URLSearchParams({ date: weekStart.toISOString(), view: "week" });
     if (professionalFilter) params.set("professionalId", professionalFilter);
     const res = await fetch(`/api/appointments?${params}`);
     if (res.ok) setAppointments(await res.json());
+    setLoading(false);
   }, [weekStart, professionalFilter]);
 
   useEffect(() => {
@@ -49,6 +62,7 @@ export function AgendaGrid() {
   }, [loadAppointments]);
 
   const days = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart]);
+  const mobileDay = days[mobileDayIndex];
 
   function findAppointment(day: Date, hour: number) {
     return appointments.find((a) => {
@@ -96,10 +110,12 @@ export function AgendaGrid() {
 
   // Resumo do dia atual (primeiro dia da semana visível, ou hoje se estiver na semana)
   const today = new Date();
-  const todayAppointments = appointments.filter((a) => isSameDay(new Date(a.date), today));
+  const todayAppointments = appointments.filter((a) => isSameDay(new Date(a.date), today) && a.status !== "CANCELLED");
   const faturamentoHoje = todayAppointments
     .filter((a) => a.status === "COMPLETED" || a.status === "CONFIRMED")
     .reduce((s, a) => s + a.service.price, 0);
+  const comparecimentosHoje = todayAppointments.filter((a) => a.status === "COMPLETED").length;
+  const faltasHoje = todayAppointments.filter((a) => a.status === "NO_SHOW").length;
   const altoRiscoHoje = todayAppointments.filter((a) => a.noShowPredicted >= 0.5).length;
   const slotsOciosos = HORARIOS.length - todayAppointments.length;
 
@@ -134,28 +150,143 @@ export function AgendaGrid() {
         </div>
       </div>
 
-      {/* Card resumo do dia */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Card>
-          <p className="text-xs text-foreground/50">Faturamento hoje</p>
-          <p className="text-xl font-bold text-zap-light">{formatCurrency(faturamentoHoje)}</p>
+      {/* Cards de resumo do dia */}
+      {loading ? (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="rounded-xl border border-surface-border bg-surface p-4">
+              <Skeleton className="mb-2 h-3 w-20" />
+              <Skeleton className="h-6 w-16" />
+            </div>
+          ))}
+        </div>
+      ) : todayAppointments.length === 0 ? (
+        <Card className="flex flex-col items-center gap-1 py-8 text-center">
+          <CalendarX2 className="mb-1 text-foreground/30" size={28} />
+          <p className="font-medium">📅 Nenhum agendamento hoje</p>
+          <p className="max-w-sm text-sm text-foreground/50">
+            Quando um cliente agendar pelo WhatsApp, aparecerá aqui automaticamente.
+          </p>
         </Card>
-        <Card>
-          <p className="text-xs text-foreground/50">Agendados hoje</p>
-          <p className="text-xl font-bold">{todayAppointments.length}</p>
-        </Card>
-        <Card>
-          <p className="text-xs text-foreground/50">Risco de faltas</p>
-          <p className="text-xl font-bold text-risk-mid">{altoRiscoHoje}</p>
-        </Card>
-        <Card>
-          <p className="text-xs text-foreground/50">Horários ociosos</p>
-          <p className="text-xl font-bold">{Math.max(0, slotsOciosos)}</p>
-        </Card>
+      ) : (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          <Card>
+            <p className="text-xs text-foreground/50">💰 Faturamento hoje</p>
+            <p className="text-xl font-bold text-zap-light">{formatCurrency(faturamentoHoje)}</p>
+          </Card>
+          <Card>
+            <p className="text-xs text-foreground/50">📅 Agendados hoje</p>
+            <p className="text-xl font-bold">{todayAppointments.length}</p>
+          </Card>
+          <Card>
+            <p className="text-xs text-foreground/50">✅ Comparecimentos</p>
+            <p className="text-xl font-bold text-risk-low">{comparecimentosHoje}</p>
+          </Card>
+          <Card>
+            <p className="text-xs text-foreground/50">❌ Faltas</p>
+            <p className="text-xl font-bold text-risk-high">{faltasHoje}</p>
+          </Card>
+          <Card>
+            <p className="text-xs text-foreground/50">⚠️ Riscos</p>
+            <p className="text-xl font-bold text-orange-400">{altoRiscoHoje}</p>
+          </Card>
+          <Card>
+            <p className="text-xs text-foreground/50">Horários ociosos</p>
+            <p className="text-xl font-bold">{Math.max(0, slotsOciosos)}</p>
+          </Card>
+        </div>
+      )}
+
+      {/* Lista vertical — mobile */}
+      <div className="md:hidden">
+        <div className="mb-3 flex gap-2 overflow-x-auto pb-1">
+          {days.map((day, i) => (
+            <button
+              key={i}
+              onClick={() => setMobileDayIndex(i)}
+              className={cn(
+                "flex min-w-[64px] shrink-0 flex-col items-center rounded-lg border px-3 py-2 text-xs transition-colors",
+                i === mobileDayIndex
+                  ? "border-zap bg-zap/15 text-zap-light"
+                  : "border-surface-border text-foreground/60 hover:bg-surface-hover"
+              )}
+            >
+              <span>{DIAS_LABEL[i]}</span>
+              <span className={cn("font-semibold", isSameDay(day, today) && i !== mobileDayIndex && "text-zap-light")}>
+                {format(day, "dd/MM")}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        {loading ? (
+          <div className="space-y-2">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Skeleton key={i} className="h-16 w-full" />
+            ))}
+          </div>
+        ) : (
+          <div className="space-y-1.5">
+            {HORARIOS.map((hour) => {
+              const appt = findAppointment(mobileDay, hour);
+              if (!appt) {
+                return (
+                  <button
+                    key={hour}
+                    onClick={() => setNewModalDate(setMinutes(setHours(mobileDay, Math.floor(hour)), (hour % 1) * 60))}
+                    className="flex min-h-[36px] w-full items-center gap-3 rounded-md px-2 text-left text-xs text-foreground/30 hover:bg-surface-hover"
+                  >
+                    <span className="w-12 shrink-0 text-foreground/40">{hourLabel(hour)}</span>
+                    <span className="h-px flex-1 bg-surface-border" />
+                    <span>Livre</span>
+                  </button>
+                );
+              }
+              const badge = STATUS_BADGE[appt.status] ?? STATUS_BADGE.CONFIRMED;
+              const highRisk = appt.noShowPredicted >= 0.5 && appt.status !== "COMPLETED" && appt.status !== "CANCELLED";
+              const color = appt.professional.color || "#10B981";
+              return (
+                <button
+                  key={hour}
+                  onClick={() => openDetail(appt)}
+                  className="flex min-h-[44px] w-full items-start gap-3 rounded-lg border border-surface-border p-3 text-left"
+                  style={{ borderLeftColor: color, borderLeftWidth: 4, backgroundColor: `${color}14` }}
+                >
+                  <span className="w-12 shrink-0 pt-0.5 text-xs font-medium text-foreground/50">{hourLabel(hour)}</span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-semibold">{appt.client.name}</p>
+                    <p className="truncate text-xs text-foreground/60">
+                      {appt.service.name} · {appt.professional.name} · {formatCurrency(appt.service.price)}
+                    </p>
+                    <div className="mt-1.5 flex flex-wrap items-center gap-1">
+                      <span className={cn("rounded px-1.5 py-0.5 text-[10px] font-medium leading-none", badge.className)}>
+                        {badge.emoji} {badge.label}
+                      </span>
+                      {highRisk && (
+                        <span className="rounded bg-orange-500/15 px-1.5 py-0.5 text-[10px] font-medium leading-none text-orange-400">
+                          ⚠️ Risco de falta
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Botão flutuante de novo agendamento */}
+        <button
+          onClick={() => setNewModalDate(setHours(mobileDay, 9))}
+          aria-label="Novo agendamento"
+          className="fixed bottom-20 right-4 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-zap text-white shadow-lg transition-transform hover:scale-105 active:scale-95"
+        >
+          <Plus size={26} />
+        </button>
       </div>
 
-      {/* Grid semanal */}
-      <div className="overflow-x-auto rounded-xl border border-surface-border bg-surface">
+      {/* Grid semanal — desktop */}
+      <div className="hidden overflow-x-auto rounded-xl border border-surface-border bg-surface md:block">
         <div className="grid min-w-[900px] grid-cols-[60px_repeat(7,1fr)]">
           <div className="sticky left-0 border-b border-r border-surface-border bg-surface p-2" />
           {days.map((day, i) => (
@@ -168,7 +299,7 @@ export function AgendaGrid() {
           {HORARIOS.map((hour) => (
             <Fragment key={hour}>
               <div className="sticky left-0 border-r border-b border-surface-border bg-surface p-1 text-right text-xs text-foreground/40">
-                {String(Math.floor(hour)).padStart(2, "0")}:{hour % 1 === 0 ? "00" : "30"}
+                {hourLabel(hour)}
               </div>
               {days.map((day, i) => {
                 const appt = findAppointment(day, hour);

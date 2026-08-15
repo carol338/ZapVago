@@ -12,6 +12,7 @@ import { formatCurrency } from "@/lib/utils";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { AlertTriangle, Star, Calendar, Phone } from "lucide-react";
+import { Breadcrumbs } from "@/components/shared/Breadcrumbs";
 
 const TAG_VARIANT: Record<string, "default" | "success" | "warning" | "danger" | "info"> = {
   vip: "info",
@@ -32,6 +33,13 @@ export function ClientProfile({ clientId }: { clientId: string }) {
 
   return (
     <div className="space-y-4">
+      <Breadcrumbs
+        items={[
+          { label: "Dashboard", href: "/dashboard" },
+          { label: "Clientes", href: "/dashboard/clients" },
+          { label: client.name },
+        ]}
+      />
       <Card>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>

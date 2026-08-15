@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Modal } from "@/components/ui/modal";
 import { Gift, Trash2, Plus } from "lucide-react";
+import { Breadcrumbs } from "@/components/shared/Breadcrumbs";
 
 export default function LoyaltyPage() {
   const [rules, setRules] = useState<any[]>([]);
@@ -46,6 +47,7 @@ export default function LoyaltyPage() {
 
   return (
     <div>
+      <Breadcrumbs items={[{ label: "Dashboard", href: "/dashboard" }, { label: "Fidelidade" }]} />
       <div className="mb-4 flex items-center justify-between">
         <h1 className="text-2xl font-bold">Fidelidade</h1>
         <Button onClick={() => setModalOpen(true)}><Plus size={16} className="mr-1" /> Nova regra</Button>
@@ -67,7 +69,7 @@ export default function LoyaltyPage() {
                     </p>
                   </div>
                 </div>
-                <button onClick={() => removeRule(r.id)} className="text-foreground/40 hover:text-risk-high">
+                <button onClick={() => removeRule(r.id)} className="-m-2 flex h-11 w-11 items-center justify-center rounded-lg text-foreground/40 transition-colors hover:bg-risk-high/10 hover:text-risk-high">
                   <Trash2 size={16} />
                 </button>
               </div>

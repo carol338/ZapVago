@@ -75,7 +75,7 @@ export function ConversationView({ conversationId, onBack }: { conversationId: s
             <button
               onClick={onBack}
               aria-label="Voltar para a lista"
-              className="shrink-0 rounded-lg p-1.5 text-foreground/60 hover:bg-surface-hover md:hidden"
+              className="-ml-2 flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-foreground/60 transition-colors hover:bg-surface-hover md:hidden"
             >
               <ArrowLeft size={18} />
             </button>
