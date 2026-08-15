@@ -15,6 +15,7 @@ import { askClaude } from "@/lib/claude";
 import { buildSystemPrompt } from "@/lib/prompt";
 import { visitsUntilNextReward, checkLoyaltyReward } from "@/lib/loyalty";
 import { calculateNoShowRisk } from "@/lib/noshow";
+import { checkDailyNegativeAlert } from "@/lib/sentiment-alerts";
 import { scheduleReminders } from "@/lib/queue";
 import { addMinutes } from "date-fns";
 
@@ -123,6 +124,8 @@ async function handleIncomingMessage(businessId: string, clientPhone: string, te
     },
   });
 
+  if (botResult.sentiment === "negative") await checkDailyNegativeAlert(businessId);
+
   // Executa a ação decidida pelo Claude
   await executeAction(businessId, client, clientPhone, botResult);
 
@@ -162,8 +165,6 @@ async function executeAction(businessId: string, client: any, clientPhone: strin
       const noShowPredicted = calculateNoShowRisk({
         client: existingClient,
         clientConfirmed: false,
-        appointmentDate: startDate,
-        createdAt: new Date(),
       });
 
       const appointment = await prisma.appointment.create({

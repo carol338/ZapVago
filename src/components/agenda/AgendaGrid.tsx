@@ -250,7 +250,11 @@ export function AgendaGrid() {
                   key={hour}
                   onClick={() => openDetail(appt)}
                   className="flex min-h-[44px] w-full items-start gap-3 rounded-lg border border-surface-border p-3 text-left"
-                  style={{ borderLeftColor: color, borderLeftWidth: 4, backgroundColor: `${color}14` }}
+                  style={{
+                    borderLeftColor: color,
+                    borderLeftWidth: 4,
+                    backgroundColor: highRisk ? "#F9731619" : `${color}14`,
+                  }}
                 >
                   <span className="w-12 shrink-0 pt-0.5 text-xs font-medium text-foreground/50">{hourLabel(hour)}</span>
                   <div className="min-w-0 flex-1">
@@ -264,7 +268,7 @@ export function AgendaGrid() {
                       </span>
                       {highRisk && (
                         <span className="rounded bg-orange-500/15 px-1.5 py-0.5 text-[10px] font-medium leading-none text-orange-400">
-                          ⚠️ Risco de falta
+                          ⚠️ Risco de falta: {Math.round(appt.noShowPredicted * 100)}%
                         </span>
                       )}
                     </div>

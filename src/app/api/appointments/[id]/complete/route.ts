@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireBusinessId } from "@/lib/api-auth";
 import { differenceInDays } from "date-fns";
+import { recalculateClientFutureRisk } from "@/lib/noshow";
 
 export async function PUT(_req: NextRequest, { params }: { params: { id: string } }) {
   const businessId = await requireBusinessId();
@@ -42,6 +43,8 @@ export async function PUT(_req: NextRequest, { params }: { params: { id: string 
       noShowRate: newTotalVisits > 0 ? client.noShowCount / newTotalVisits : 0,
     },
   });
+
+  await recalculateClientFutureRisk(client.id);
 
   return NextResponse.json({ ok: true });
 }

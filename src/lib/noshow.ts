@@ -1,39 +1,83 @@
 /**
- * Previsão de faltas (no-show) — Diferencial 5.
- * Algoritmo simples e explicável baseado em histórico do cliente
- * e sinais do agendamento específico.
+ * Previsão de faltas (no-show) — Diferencial 5 / Bloco 2 Parte 3.
+ * Algoritmo explicável baseado em histórico do cliente e sinais do
+ * agendamento específico. Recalculado sempre que o cliente confirma,
+ * cancela, falta, conclui um atendimento, ou cria um novo agendamento.
  */
 import { differenceInDays } from "date-fns";
 import { Client } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
+import { sendWhatsAppMessage } from "@/lib/whatsapp";
 
 interface NoShowInput {
-  client: Pick<Client, "noShowCount" | "totalVisits" | "lastContactedAt">;
+  client: Pick<Client, "noShowCount" | "totalVisits" | "cancelLateCount" | "lastVisitAt">;
   clientConfirmed: boolean;
-  appointmentDate: Date;
-  createdAt: Date;
 }
 
-/** Retorna um risco de 0 a 1. Acima de 0.5 é considerado alto risco (⚠️ na planilha). */
-export function calculateNoShowRisk({ client, clientConfirmed, appointmentDate, createdAt }: NoShowInput): number {
+/**
+ * risco = histórico de faltas (40%) + cancelamentos em cima da hora (20%)
+ *       + não confirmou lembrete (30%) + cliente frio, 30+ dias sem visita (10%)
+ * Retorna um número de 0 a 1.
+ */
+export function calculateNoShowRisk({ client, clientConfirmed }: NoShowInput): number {
+  const visits = Math.max(client.totalVisits, 1);
   let risco = 0;
 
-  // Histórico de faltas do cliente
-  if (client.totalVisits > 0) {
-    risco += (client.noShowCount / client.totalVisits) * 0.4;
-  }
+  risco += (client.noShowCount / visits) * 0.4;
+  risco += (client.cancelLateCount / visits) * 0.2;
+  risco += clientConfirmed ? 0 : 0.3;
 
-  // Cliente "frio" — sem contato recente
-  const diasDesdeUltimoContato = client.lastContactedAt ? differenceInDays(new Date(), client.lastContactedAt) : 999;
-  if (diasDesdeUltimoContato > 30) risco += 0.2;
-
-  // Não confirmou o lembrete
-  if (!clientConfirmed) risco += 0.3;
-
-  // Agendou com muita antecedência
-  const diasDesdeAgendamento = differenceInDays(appointmentDate, createdAt);
-  if (diasDesdeAgendamento > 14) risco += 0.1;
+  const diasDesdeUltimaVisita = client.lastVisitAt ? differenceInDays(new Date(), client.lastVisitAt) : 999;
+  if (diasDesdeUltimaVisita > 30) risco += 0.1;
 
   return Math.min(1, Math.round(risco * 100) / 100);
 }
 
 export const HIGH_RISK_THRESHOLD = 0.5;
+export const CRITICAL_RISK_THRESHOLD = 0.7;
+
+/**
+ * Recalcula o risco de todos os agendamentos futuros (ainda não concluídos/
+ * cancelados) de um cliente — chamado sempre que as estatísticas do cliente
+ * mudam. Notifica o dono via WhatsApp se algum agendamento cruzar 70% de
+ * risco pela primeira vez.
+ */
+export async function recalculateClientFutureRisk(clientId: string) {
+  const client = await prisma.client.findUnique({ where: { id: clientId } });
+  if (!client) return;
+
+  const futureAppointments = await prisma.appointment.findMany({
+    where: {
+      clientId,
+      date: { gte: new Date() },
+      status: { in: ["CONFIRMED", "PENDING_CONFIRMATION"] },
+    },
+    include: { client: true, service: true, business: { include: { owner: true } } },
+  });
+
+  for (const appt of futureAppointments) {
+    const risco = calculateNoShowRisk({ client, clientConfirmed: appt.clientConfirmed });
+
+    await prisma.appointment.update({ where: { id: appt.id }, data: { noShowPredicted: risco } });
+
+    if (risco >= CRITICAL_RISK_THRESHOLD && !appt.riskNotifiedAt && appt.business.owner) {
+      const dataFormatada = appt.date.toLocaleString("pt-BR", {
+        weekday: "long",
+        day: "2-digit",
+        month: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+      const msg = `⚠️ ALERTA DE FALTA PROVÁVEL
+
+${appt.client.name} tem ${Math.round(risco * 100)}% de chance de faltar (${dataFormatada}).
+
+Não confirmou o lembrete e já faltou ${appt.client.noShowCount}x no passado.
+
+Acesse o painel pra mandar uma confirmação extra.`;
+
+      await sendWhatsAppMessage(appt.business.owner.phone, msg);
+      await prisma.appointment.update({ where: { id: appt.id }, data: { riskNotifiedAt: new Date() } });
+    }
+  }
+}

@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireBusinessId } from "@/lib/api-auth";
+import { calculateNoShowRisk } from "@/lib/noshow";
 
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
   const businessId = await requireBusinessId();
@@ -15,7 +16,13 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
     },
   });
   if (!client) return NextResponse.json({ error: "Cliente não encontrado." }, { status: 404 });
-  return NextResponse.json(client);
+
+  // Risco geral do cliente (perfil), calculado com a mesma fórmula do risco por
+  // agendamento — assume clientConfirmed:true pra refletir o padrão histórico dele,
+  // não um lembrete específico não respondido.
+  const predictedNoShowRisk = calculateNoShowRisk({ client, clientConfirmed: true });
+
+  return NextResponse.json({ ...client, predictedNoShowRisk });
 }
 
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {

@@ -8,6 +8,9 @@ import { requireBusinessId } from "@/lib/api-auth";
 import { addMinutes, differenceInHours } from "date-fns";
 import { offerSlotToWaitingList } from "@/lib/waiting-list";
 import { scheduleReminders } from "@/lib/queue";
+import { recalculateClientFutureRisk } from "@/lib/noshow";
+
+const LATE_CANCEL_HOURS = 24; // cancelou com menos de 24h de antecedência = "em cima da hora"
 
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
   const businessId = await requireBusinessId();
@@ -55,7 +58,13 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
     return NextResponse.json({ error: `Cancelamento permitido apenas com ${deadline}h de antecedência.` }, { status: 403 });
   }
 
-  await prisma.appointment.update({ where: { id: params.id }, data: { status: "CANCELLED" } });
+  await prisma.appointment.update({ where: { id: params.id }, data: { status: "CANCELLED", cancelledAt: new Date() } });
+
+  const isLateCancel = differenceInHours(appointment.date, new Date()) < LATE_CANCEL_HOURS;
+  if (isLateCancel) {
+    await prisma.client.update({ where: { id: appointment.clientId }, data: { cancelLateCount: { increment: 1 } } });
+  }
+  await recalculateClientFutureRisk(appointment.clientId);
 
   // Diferencial 2: Lista de Espera Ativa — oferece a vaga imediatamente
   const offered = await offerSlotToWaitingList(params.id);

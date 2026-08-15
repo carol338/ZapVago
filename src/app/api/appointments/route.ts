@@ -74,8 +74,6 @@ export async function POST(req: NextRequest) {
   const noShowPredicted = calculateNoShowRisk({
     client,
     clientConfirmed: false,
-    appointmentDate: startDate,
-    createdAt: new Date(),
   });
 
   const appointment = await prisma.appointment.create({

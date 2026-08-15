@@ -120,6 +120,7 @@ model Client {
   avgIntervalDays      Float?
   noShowCount          Int       @default(0)
   noShowRate           Float     @default(0)
+  cancelLateCount      Int       @default(0) // cancelou com menos de 24h de antecedencia
   loyaltyPoints        Int       @default(0)
   predictedNoShowRisk  Float     @default(0)
   lastContactedAt      DateTime?
@@ -132,9 +133,22 @@ model Client {
   conversations Conversation[]
   waitingList   WaitingListEntry[]
   bookingTokens BookingToken[]
+  clientNotes   ClientNote[]
 
   @@unique([businessId, phone])
   @@index([businessId])
+}
+
+// Notas do dono sobre o cliente — Prontuário Inteligente.
+model ClientNote {
+  id         String   @id @default(cuid())
+  businessId String
+  clientId   String
+  client     Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  text       String
+  createdAt  DateTime @default(now())
+
+  @@index([clientId])
 }
 
 model Appointment {
@@ -168,6 +182,9 @@ model Appointment {
   paymentId       String? // id do pagamento no provedor (Mercado Pago)
   paymentDiscount Float   @default(0)
   paymentExpiresAt DateTime? // prazo do Pix (15min) — expirado e não pago = cancelado
+
+  cancelledAt   DateTime? // quando foi cancelado (pra saber se foi em cima da hora)
+  riskNotifiedAt DateTime? // evita notificar o dono mais de uma vez pro mesmo risco alto
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

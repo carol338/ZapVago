@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireBusinessId } from "@/lib/api-auth";
 import { applySilentRules } from "@/lib/silent-mode";
+import { recalculateClientFutureRisk } from "@/lib/noshow";
 
 export async function PUT(_req: NextRequest, { params }: { params: { id: string } }) {
   const businessId = await requireBusinessId();
@@ -29,6 +30,7 @@ export async function PUT(_req: NextRequest, { params }: { params: { id: string 
   });
 
   await applySilentRules(businessId, appointment.clientId);
+  await recalculateClientFutureRisk(appointment.clientId);
 
   return NextResponse.json({ ok: true });
 }

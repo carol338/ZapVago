@@ -62,7 +62,11 @@ export function AgendaCell({
       onDragOver={onDragOver}
       onClick={onClick}
       className="flex h-20 w-full cursor-pointer flex-col justify-between rounded-md border border-surface-border p-1.5 text-left text-xs transition-transform hover:scale-[1.02]"
-      style={{ borderLeftColor: color, borderLeftWidth: 4, backgroundColor: `${color}1A` }}
+      style={{
+        borderLeftColor: color,
+        borderLeftWidth: 4,
+        backgroundColor: highRisk ? "#F9731619" : `${color}1A`,
+      }}
     >
       <div>
         <p className="truncate font-semibold">{appointment.clientName}</p>
@@ -73,7 +77,9 @@ export function AgendaCell({
           {badge.emoji} {badge.label}
         </span>
         {highRisk && (
-          <span className="rounded bg-orange-500/15 px-1 py-0.5 text-[10px] font-medium leading-none text-orange-400">⚠️</span>
+          <span className="rounded bg-orange-500/15 px-1 py-0.5 text-[10px] font-medium leading-none text-orange-400">
+            ⚠️ {Math.round(appointment.risk * 100)}%
+          </span>
         )}
         <span className="ml-auto font-medium">{formatCurrency(appointment.price)}</span>
       </div>

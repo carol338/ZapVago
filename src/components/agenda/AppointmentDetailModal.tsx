@@ -9,6 +9,10 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { AlertTriangle, Phone } from "lucide-react";
 
+// Mesmo valor de CRITICAL_RISK_THRESHOLD em src/lib/noshow.ts — duplicado aqui
+// pra não importar código server-only (prisma, whatsapp) num client component.
+const CRITICAL_RISK_THRESHOLD = 0.7;
+
 export interface AppointmentDetail {
   id: string;
   date: string;
@@ -39,6 +43,7 @@ export function AppointmentDetailModal({
   onChanged: () => void;
 }) {
   const [loading, setLoading] = useState<string | null>(null);
+  const [confirmationSent, setConfirmationSent] = useState(false);
   if (!appointment) return null;
 
   async function act(action: "confirm" | "no-show" | "complete" | "cancel") {
@@ -48,6 +53,13 @@ export function AppointmentDetailModal({
     setLoading(null);
     onChanged();
     onClose();
+  }
+
+  async function sendConfirmation() {
+    setLoading("send-confirmation");
+    await fetch(`/api/appointments/${appointment!.id}/send-confirmation`, { method: "POST" });
+    setLoading(null);
+    setConfirmationSent(true);
   }
 
   const status = STATUS_LABEL[appointment.status] ?? STATUS_LABEL.CONFIRMED;
@@ -76,9 +88,22 @@ export function AppointmentDetailModal({
         )}
 
         {appointment.noShowPredicted >= 0.5 && (
-          <div className="flex items-center gap-2 rounded-lg border border-risk-high/30 bg-risk-high/10 p-3 text-sm text-risk-high">
-            <AlertTriangle size={16} />
-            <span>Risco de falta previsto: {Math.round(appointment.noShowPredicted * 100)}%</span>
+          <div className="space-y-2 rounded-lg border border-risk-high/30 bg-risk-high/10 p-3 text-sm text-risk-high">
+            <div className="flex items-center gap-2">
+              <AlertTriangle size={16} />
+              <span>Risco de falta previsto: {Math.round(appointment.noShowPredicted * 100)}%</span>
+            </div>
+            {appointment.noShowPredicted >= CRITICAL_RISK_THRESHOLD && (
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={sendConfirmation}
+                disabled={!!loading || confirmationSent}
+                className="w-full"
+              >
+                {confirmationSent ? "Confirmação enviada ✅" : loading === "send-confirmation" ? "Enviando..." : "Enviar confirmação extra"}
+              </Button>
+            )}
           </div>
         )}
 

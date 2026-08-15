@@ -2,7 +2,8 @@
 
 /**
  * Perfil completo do cliente — o "Prontuário Inteligente" visto pelo dono.
- * Histórico de agendamentos, preferências, alergias e risco de falta.
+ * Histórico de agendamentos, preferências calculadas, alergias, notas e
+ * risco de falta.
  */
 import { useEffect, useState } from "react";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { formatCurrency } from "@/lib/utils";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { AlertTriangle, Star, Calendar, Phone, Link2, Copy, Check } from "lucide-react";
+import { AlertTriangle, Star, Calendar, Phone, Link2, Copy, Check, Brain, MessageCircle, StickyNote } from "lucide-react";
 import { Breadcrumbs } from "@/components/shared/Breadcrumbs";
 
 const TAG_VARIANT: Record<string, "default" | "success" | "warning" | "danger" | "info"> = {
@@ -22,14 +23,40 @@ const TAG_VARIANT: Record<string, "default" | "success" | "warning" | "danger" |
   problema: "danger",
 };
 
+const DIA_LABEL: Record<string, string> = {
+  mon: "Segunda",
+  tue: "Terça",
+  wed: "Quarta",
+  thu: "Quinta",
+  fri: "Sexta",
+  sat: "Sábado",
+  sun: "Domingo",
+};
+
+const PERIODO_LABEL: Record<string, string> = { manha: "Manhã", tarde: "Tarde", noite: "Noite" };
+
+const STATUS_RETORNO_LABEL: Record<string, { label: string; className: string }> = {
+  PONTUAL: { label: "Pontual", className: "text-risk-low" },
+  ATRASADO: { label: "ATRASADO", className: "text-risk-mid" },
+  MUITO_ATRASADO: { label: "MUITO ATRASADO", className: "text-risk-high" },
+};
+
 export function ClientProfile({ clientId }: { clientId: string }) {
   const [client, setClient] = useState<any>(null);
+  const [prontuario, setProntuario] = useState<any>(null);
+  const [notes, setNotes] = useState<any[]>([]);
+  const [noteText, setNoteText] = useState("");
+  const [savingNote, setSavingNote] = useState(false);
   const [bookingUrl, setBookingUrl] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [sendingReturn, setSendingReturn] = useState(false);
+  const [returnSent, setReturnSent] = useState(false);
 
   useEffect(() => {
     fetch(`/api/clients/${clientId}`).then((r) => r.json()).then(setClient);
+    fetch(`/api/clients/${clientId}/prontuario`).then((r) => r.json()).then(setProntuario);
+    fetch(`/api/clients/${clientId}/notes`).then((r) => r.json()).then(setNotes);
   }, [clientId]);
 
   async function generateBookingLink() {
@@ -49,6 +76,27 @@ export function ClientProfile({ clientId }: { clientId: string }) {
     await navigator.clipboard.writeText(bookingUrl);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  }
+
+  async function sendReturnMessage() {
+    setSendingReturn(true);
+    await fetch(`/api/clients/${clientId}/send-return-message`, { method: "POST" });
+    setSendingReturn(false);
+    setReturnSent(true);
+  }
+
+  async function addNote() {
+    if (!noteText.trim()) return;
+    setSavingNote(true);
+    const res = await fetch(`/api/clients/${clientId}/notes`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: noteText.trim() }),
+    });
+    const note = await res.json();
+    setNotes((prev) => [note, ...prev]);
+    setNoteText("");
+    setSavingNote(false);
   }
 
   if (!client) return <p className="text-sm text-foreground/40">Carregando perfil...</p>;
@@ -113,9 +161,56 @@ export function ClientProfile({ clientId }: { clientId: string }) {
         </div>
       )}
 
+      {/* Prontuário Inteligente */}
+      <Card>
+        <CardHeader><CardTitle className="flex items-center gap-1.5"><Brain size={15} /> Prontuário Inteligente</CardTitle></CardHeader>
+        {!prontuario ? (
+          <p className="text-sm text-foreground/40">Carregando...</p>
+        ) : !prontuario.serviceFavorito ? (
+          <p className="text-sm text-foreground/40">
+            Ainda não há agendamentos concluídos suficientes pra calcular preferências.
+          </p>
+        ) : (
+          <div className="space-y-4 text-sm">
+            <div>
+              <p className="mb-1.5 font-medium text-foreground/80">Preferências</p>
+              <ul className="space-y-1 text-foreground/60">
+                {prontuario.professionalPreferido && <li>• Profissional: {prontuario.professionalPreferido.name}</li>}
+                {prontuario.serviceFavorito && <li>• Serviço favorito: {prontuario.serviceFavorito.name}</li>}
+                {prontuario.diasPreferidos?.length > 0 && (
+                  <li>• Dias preferidos: {prontuario.diasPreferidos.map((d: string) => DIA_LABEL[d] ?? d).join(" e ")}</li>
+                )}
+                {prontuario.periodoPreferido && <li>• Período: {PERIODO_LABEL[prontuario.periodoPreferido]}</li>}
+              </ul>
+            </div>
+
+            {prontuario.proximoRetorno && (
+              <div>
+                <p className="mb-1.5 font-medium text-foreground/80">Próximo retorno previsto</p>
+                <ul className="space-y-1 text-foreground/60">
+                  <li>• Intervalo médio: a cada {prontuario.intervaloMedioDias} dias</li>
+                  <li>• Previsto para: {format(new Date(prontuario.proximoRetorno), "dd/MM/yyyy", { locale: ptBR })}</li>
+                  <li className={STATUS_RETORNO_LABEL[prontuario.statusRetorno]?.className}>
+                    • Status: {STATUS_RETORNO_LABEL[prontuario.statusRetorno]?.label}
+                    {prontuario.statusRetorno !== "PONTUAL" && ` há ${prontuario.diasAtrasado} dias ⚠️`}
+                  </li>
+                </ul>
+
+                {prontuario.statusRetorno !== "PONTUAL" && (
+                  <Button size="sm" className="mt-3" onClick={sendReturnMessage} disabled={sendingReturn || returnSent}>
+                    <MessageCircle size={14} className="mr-1" />
+                    {returnSent ? "Mensagem enviada ✅" : sendingReturn ? "Enviando..." : "Enviar mensagem de retorno"}
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+      </Card>
+
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Card>
-          <CardHeader><CardTitle>Preferências</CardTitle></CardHeader>
+          <CardHeader><CardTitle>Preferências (cadastro)</CardTitle></CardHeader>
           <div className="space-y-1 text-sm text-foreground/70">
             <p>Melhores dias: {client.preferencias?.bestDays?.join(", ") ?? "não identificado ainda"}</p>
             <p>Melhores horários: {client.preferencias?.bestTimes?.join(", ") ?? "não identificado ainda"}</p>
@@ -149,6 +244,31 @@ export function ClientProfile({ clientId }: { clientId: string }) {
           {(!client.appointments || client.appointments.length === 0) && (
             <p className="text-sm text-foreground/40">Sem agendamentos ainda.</p>
           )}
+        </div>
+      </Card>
+
+      <Card>
+        <CardHeader><CardTitle className="flex items-center gap-1.5"><StickyNote size={15} /> Notas</CardTitle></CardHeader>
+        <div className="mb-3 flex gap-2">
+          <textarea
+            value={noteText}
+            onChange={(e) => setNoteText(e.target.value)}
+            placeholder="Escreva uma observação sobre esse cliente..."
+            rows={2}
+            className="min-h-[44px] w-full rounded-lg border border-surface-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-foreground/40 focus:outline-none focus:ring-2 focus:ring-zap"
+          />
+        </div>
+        <Button size="sm" variant="secondary" onClick={addNote} disabled={savingNote || !noteText.trim()} className="mb-3">
+          {savingNote ? "Salvando..." : "Adicionar nota"}
+        </Button>
+        <div className="space-y-2">
+          {notes.map((n) => (
+            <div key={n.id} className="rounded-lg bg-background p-3 text-sm">
+              <p className="text-foreground/80">{n.text}</p>
+              <p className="mt-1 text-xs text-foreground/40">{format(new Date(n.createdAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</p>
+            </div>
+          ))}
+          {notes.length === 0 && <p className="text-sm text-foreground/40">Nenhuma nota ainda.</p>}
         </div>
       </Card>
     </div>
