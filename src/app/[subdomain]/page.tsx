@@ -4,9 +4,10 @@
  */
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
+import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { formatCurrency } from "@/lib/utils";
-import { MapPin, Clock, MessageCircle, ShieldCheck } from "lucide-react";
+import { MapPin, Clock, MessageCircle, ShieldCheck, CalendarCheck } from "lucide-react";
 
 const DIAS: { key: string; label: string }[] = [
   { key: "mon", label: "Segunda" },
@@ -60,7 +61,7 @@ export default async function BusinessPublicPage({ params }: { params: { subdoma
 
   return (
     <div
-      className="min-h-screen bg-[#0A0A0B] pb-24 text-[#FAFAFA] md:pb-0"
+      className="min-h-screen bg-[#0A0A0B] pb-36 text-[#FAFAFA] md:pb-0"
       style={{ ["--pub-primary" as any]: primary, ["--pub-secondary" as any]: secondary }}
     >
       {/* Hero */}
@@ -117,12 +118,18 @@ export default async function BusinessPublicPage({ params }: { params: { subdoma
           </div>
 
           <div className="mt-7 hidden justify-center gap-3 md:flex">
+            <Link
+              href={`/${business.slug}/agendar`}
+              className="inline-flex items-center gap-2 rounded-lg px-6 py-3 font-medium text-white shadow-lg transition-transform hover:scale-105"
+              style={{ backgroundColor: "var(--pub-primary)" }}
+            >
+              <CalendarCheck size={18} /> Agendar agora
+            </Link>
             <a
               href={waHref}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 rounded-lg px-6 py-3 font-medium text-white shadow-lg transition-transform hover:scale-105"
-              style={{ backgroundColor: "var(--pub-primary)" }}
+              className="inline-flex items-center gap-2 rounded-lg border border-white/15 px-6 py-3 font-medium text-white transition-colors hover:bg-white/5"
             >
               <MessageCircle size={18} /> Agendar pelo WhatsApp
             </a>
@@ -155,15 +162,13 @@ export default async function BusinessPublicPage({ params }: { params: { subdoma
                     <span className="text-lg font-bold" style={{ color: "var(--pub-primary)" }}>
                       {formatCurrency(s.price)}
                     </span>
-                    <a
-                      href={whatsappLink(business.phone, `Oi! Quero agendar "${s.name}" na ${business.name} 🙂`)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="min-h-[44px] rounded-lg px-4 py-2 text-sm font-medium text-white transition-transform hover:scale-105 flex items-center"
+                    <Link
+                      href={`/${business.slug}/agendar?service=${s.id}`}
+                      className="flex min-h-[44px] items-center rounded-lg px-4 py-2 text-sm font-medium text-white transition-transform hover:scale-105"
                       style={{ backgroundColor: "var(--pub-primary)" }}
                     >
                       Agendar
-                    </a>
+                    </Link>
                   </div>
                 </div>
               </div>
@@ -213,15 +218,21 @@ export default async function BusinessPublicPage({ params }: { params: { subdoma
       </footer>
 
       {/* CTA fixo — mobile */}
-      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-white/10 bg-[#0A0A0B]/95 p-3 backdrop-blur md:hidden">
+      <div className="fixed inset-x-0 bottom-0 z-30 space-y-2 border-t border-white/10 bg-[#0A0A0B]/95 p-3 backdrop-blur md:hidden">
+        <Link
+          href={`/${business.slug}/agendar`}
+          className="flex min-h-[48px] items-center justify-center gap-2 rounded-lg font-medium text-white"
+          style={{ backgroundColor: "var(--pub-primary)" }}
+        >
+          <CalendarCheck size={18} /> Agendar agora
+        </Link>
         <a
           href={waHref}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex min-h-[48px] items-center justify-center gap-2 rounded-lg font-medium text-white"
-          style={{ backgroundColor: "var(--pub-primary)" }}
+          className="flex min-h-[44px] items-center justify-center gap-2 rounded-lg border border-white/15 text-sm font-medium text-white"
         >
-          <MessageCircle size={18} /> Agendar pelo WhatsApp
+          <MessageCircle size={16} /> Agendar pelo WhatsApp
         </a>
       </div>
     </div>
