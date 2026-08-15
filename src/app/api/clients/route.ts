@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireBusinessId } from "@/lib/api-auth";
+import { calculateNoShowRisk } from "@/lib/noshow";
 
 export async function GET(req: NextRequest) {
   const businessId = await requireBusinessId();
@@ -25,7 +26,13 @@ export async function GET(req: NextRequest) {
         ? { lastVisitAt: "desc" }
         : { name: "asc" },
   });
-  return NextResponse.json(clients);
+
+  // Risco geral (perfil) calculado ao vivo — ver mesma lógica em /api/clients/[id].
+  const withRisk = clients.map((c) => ({
+    ...c,
+    predictedNoShowRisk: calculateNoShowRisk({ client: c, clientConfirmed: true }),
+  }));
+  return NextResponse.json(withRisk);
 }
 
 export async function POST(req: NextRequest) {
