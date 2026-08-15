@@ -8,8 +8,20 @@
 import { useEffect, useMemo, useState } from "react";
 import { addDays, format, isSameDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Check, Copy, Loader2, MessageCircle, Star } from "lucide-react";
+import { Check, Copy, CreditCard, Loader2, MessageCircle, Star } from "lucide-react";
 import { formatCurrency, cn } from "@/lib/utils";
+
+function formatCardNumber(v: string) {
+  const digits = v.replace(/\D/g, "").slice(0, 16);
+  return digits.replace(/(\d{4})(?=\d)/g, "$1 ");
+}
+function formatExpiry(v: string) {
+  const digits = v.replace(/\D/g, "").slice(0, 4);
+  return digits.length <= 2 ? digits : `${digits.slice(0, 2)}/${digits.slice(2)}`;
+}
+function formatCvv(v: string) {
+  return v.replace(/\D/g, "").slice(0, 3);
+}
 
 interface Service {
   id: string;
@@ -61,6 +73,14 @@ export function BookingFlow({
   const [paymentMethod, setPaymentMethod] = useState<"pix" | "card" | "local">("pix");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const [cardNumber, setCardNumber] = useState("");
+  const [cardName, setCardName] = useState("");
+  const [cardExpiry, setCardExpiry] = useState("");
+  const [cardCvv, setCardCvv] = useState("");
+  const [installments, setInstallments] = useState(3);
+  const [cardErrors, setCardErrors] = useState<Record<string, string>>({});
+  const [cardStage, setCardStage] = useState<"form" | "processing" | "approved">("form");
 
   const [pix, setPix] = useState<{ appointmentId: string; qrCodeText: string; expiresAt: string } | null>(null);
   const [pixSecondsLeft, setPixSecondsLeft] = useState(0);
@@ -123,8 +143,27 @@ export function BookingFlow({
   const price = effectiveService?.price ?? 0;
   const pixPrice = Math.round(price * 0.95 * 100) / 100;
 
+  function validateCard(): Record<string, string> {
+    const errors: Record<string, string> = {};
+    if (cardNumber.replace(/\s/g, "").length < 16) errors.cardNumber = "Número do cartão precisa ter 16 dígitos.";
+    if (cardName.trim().length < 3) errors.cardName = "Informe o nome do titular.";
+    if (!/^\d{2}\/\d{2}$/.test(cardExpiry)) errors.cardExpiry = "Use o formato MM/AA.";
+    if (cardCvv.length !== 3) errors.cardCvv = "O CVV precisa ter 3 dígitos.";
+    return errors;
+  }
+
   async function handleConfirm() {
     if (!effectiveService || !professionalId || !time) return;
+
+    if (paymentMethod === "card") {
+      const errors = validateCard();
+      if (Object.keys(errors).length > 0) {
+        setCardErrors(errors);
+        return;
+      }
+      setCardErrors({});
+    }
+
     setSubmitting(true);
     setError(null);
     try {
@@ -151,13 +190,17 @@ export function BookingFlow({
       if (paymentMethod === "local") {
         setConfirmed({ serviceName: effectiveService.name, professionalName: professional.name, date: finalDate, paymentLabel: "A pagar no local" });
       } else if (paymentMethod === "card") {
+        setCardStage("processing");
+        await new Promise((r) => setTimeout(r, 2000)); // simula processamento do cartão
         const cardRes = await fetch("/api/public/payments/card", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ appointmentId: created.appointmentId, token, installments: 3 }),
+          body: JSON.stringify({ appointmentId: created.appointmentId, token, installments }),
         });
         const cardData = await cardRes.json();
         if (!cardRes.ok) throw new Error("Pagamento no cartão recusado.");
+        setCardStage("approved");
+        await new Promise((r) => setTimeout(r, 900));
         setConfirmed({ serviceName: effectiveService.name, professionalName: professional.name, date: finalDate, paymentLabel: "Cartão ✅" });
       } else {
         const pixRes = await fetch("/api/public/payments/pix", {
@@ -171,6 +214,7 @@ export function BookingFlow({
       }
     } catch (e: any) {
       setError(e.message ?? "Algo deu errado. Tenta de novo.");
+      setCardStage("form");
     } finally {
       setSubmitting(false);
     }
@@ -460,7 +504,10 @@ export function BookingFlow({
           <div className="space-y-2">
             <PaymentOption
               active={paymentMethod === "pix"}
-              onSelect={() => setPaymentMethod("pix")}
+              onSelect={() => {
+                setPaymentMethod("pix");
+                setCardStage("form");
+              }}
               label="Pix (5% off)"
               value={formatCurrency(pixPrice)}
               primary={primary}
@@ -474,24 +521,114 @@ export function BookingFlow({
             />
             <PaymentOption
               active={paymentMethod === "local"}
-              onSelect={() => setPaymentMethod("local")}
+              onSelect={() => {
+                setPaymentMethod("local");
+                setCardStage("form");
+              }}
               label="Pagar no local"
               value={formatCurrency(price)}
               primary={primary}
             />
+
+            {paymentMethod === "card" && (
+              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                {cardStage === "processing" ? (
+                  <div className="flex flex-col items-center gap-2 py-8">
+                    <Loader2 size={28} className="animate-spin" style={{ color: "var(--pub-primary)" }} />
+                    <p className="text-sm text-white/60">Processando pagamento...</p>
+                  </div>
+                ) : cardStage === "approved" ? (
+                  <div className="flex flex-col items-center gap-2 py-8">
+                    <Check size={28} style={{ color: "var(--pub-primary)" }} />
+                    <p className="font-medium">Pagamento aprovado ✅</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <p className="flex items-center gap-2 text-sm font-semibold">
+                      <CreditCard size={16} style={{ color: "var(--pub-primary)" }} /> Pagamento com cartão
+                    </p>
+                    <div>
+                      <label className="mb-1 block text-xs text-white/50">Número do cartão</label>
+                      <input
+                        inputMode="numeric"
+                        placeholder="0000 0000 0000 0000"
+                        value={cardNumber}
+                        onChange={(e) => setCardNumber(formatCardNumber(e.target.value))}
+                        className="min-h-[44px] w-full rounded-lg border border-white/10 bg-black/30 px-3 text-[#FAFAFA] placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-white/20"
+                      />
+                      {cardErrors.cardNumber && <p className="mt-1 text-xs text-red-400">{cardErrors.cardNumber}</p>}
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs text-white/50">Nome do titular</label>
+                      <input
+                        placeholder="Maria Silva"
+                        value={cardName}
+                        onChange={(e) => setCardName(e.target.value)}
+                        className="min-h-[44px] w-full rounded-lg border border-white/10 bg-black/30 px-3 text-[#FAFAFA] placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-white/20"
+                      />
+                      {cardErrors.cardName && <p className="mt-1 text-xs text-red-400">{cardErrors.cardName}</p>}
+                    </div>
+                    <div className="flex gap-3">
+                      <div className="flex-1">
+                        <label className="mb-1 block text-xs text-white/50">Validade</label>
+                        <input
+                          inputMode="numeric"
+                          placeholder="08/28"
+                          value={cardExpiry}
+                          onChange={(e) => setCardExpiry(formatExpiry(e.target.value))}
+                          className="min-h-[44px] w-full rounded-lg border border-white/10 bg-black/30 px-3 text-[#FAFAFA] placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-white/20"
+                        />
+                        {cardErrors.cardExpiry && <p className="mt-1 text-xs text-red-400">{cardErrors.cardExpiry}</p>}
+                      </div>
+                      <div className="flex-1">
+                        <label className="mb-1 block text-xs text-white/50">CVV</label>
+                        <input
+                          inputMode="numeric"
+                          placeholder="123"
+                          value={cardCvv}
+                          onChange={(e) => setCardCvv(formatCvv(e.target.value))}
+                          className="min-h-[44px] w-full rounded-lg border border-white/10 bg-black/30 px-3 text-[#FAFAFA] placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-white/20"
+                        />
+                        {cardErrors.cardCvv && <p className="mt-1 text-xs text-red-400">{cardErrors.cardCvv}</p>}
+                      </div>
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs text-white/50">Parcelas</label>
+                      <select
+                        value={installments}
+                        onChange={(e) => setInstallments(Number(e.target.value))}
+                        className="min-h-[44px] w-full rounded-lg border border-white/10 bg-black/30 px-3 text-[#FAFAFA] focus:outline-none focus:ring-2 focus:ring-white/20"
+                      >
+                        <option value={1}>1x sem juros</option>
+                        <option value={2}>2x sem juros</option>
+                        <option value={3}>3x sem juros</option>
+                      </select>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </section>
 
         {error && <p className="rounded-lg bg-red-500/10 p-3 text-sm text-red-400">{error}</p>}
 
-        <button
-          onClick={handleConfirm}
-          disabled={!canConfirm}
-          className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-lg font-semibold text-white transition-transform hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-40"
-          style={{ backgroundColor: "var(--pub-primary)" }}
-        >
-          {submitting ? <Loader2 size={18} className="animate-spin" /> : "CONFIRMAR AGENDAMENTO"}
-        </button>
+        {!(paymentMethod === "card" && cardStage !== "form") && (
+          <button
+            onClick={handleConfirm}
+            disabled={!canConfirm}
+            className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-lg font-semibold text-white transition-transform hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-40"
+            style={{ backgroundColor: "var(--pub-primary)" }}
+          >
+            {submitting ? (
+              <Loader2 size={18} className="animate-spin" />
+            ) : paymentMethod === "card" ? (
+              "PAGAR COM CARTÃO"
+            ) : (
+              "CONFIRMAR AGENDAMENTO"
+            )}
+          </button>
+        )}
 
         <p className="text-center text-xs text-white/30">
           ⚡ Se pagar agora e precisar remarcar, é grátis até 4h antes.
