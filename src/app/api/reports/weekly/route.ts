@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
     const key = format(a.date, "EEE dd/MM", { locale: ptBR });
     const cur = porDia.get(key) ?? { faturamento: 0, agendados: 0 };
     cur.agendados += 1;
-    if (a.status === "COMPLETED") cur.faturamento += a.service.price;
+    if (a.status === "COMPLETED" || a.status === "CONFIRMED") cur.faturamento += a.service.price;
     porDia.set(key, cur);
   });
 
