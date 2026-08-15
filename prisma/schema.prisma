@@ -21,6 +21,12 @@ model Business {
   whatsappConnected      Boolean   @default(false)
   whatsappProviderConfig Json?
 
+  // Página pública (vitrine do negócio)
+  logo           String?
+  coverImage     String?
+  colorPrimary   String?
+  colorSecondary String?
+
   // settings: workingHours, blockedSlots, slotDuration, reminderHours,
   // autoConfirm, allowCancel, cancelDeadlineHours, language, timezone
   settings Json @default("{}")
@@ -67,6 +73,8 @@ model Service {
   order         Int      @default(0)
   comboOf       String[] // IDs de serviços que formam combo com este
   comboDiscount Float? // percentual de desconto no combo
+  image         String? // foto do serviço na página pública
+  description   String? // descrição curta na página pública
 
   appointments Appointment[]
   waitingListEntries WaitingListEntry[]
@@ -82,6 +90,7 @@ model Professional {
   color      String   @default("#10B981")
   serviceIds String[] // IDs dos serviços que este profissional faz
   active     Boolean  @default(true)
+  photo      String? // foto do profissional na página pública
 
   appointments Appointment[]
 
