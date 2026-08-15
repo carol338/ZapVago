@@ -40,6 +40,7 @@ model Business {
   flashSales    FlashSale[]
   waitingList   WaitingListEntry[]
   silentRules   SilentRule[]
+  bookingTokens BookingToken[]
   owner         Owner?
 
   createdAt DateTime @default(now())
@@ -78,6 +79,7 @@ model Service {
 
   appointments Appointment[]
   waitingListEntries WaitingListEntry[]
+  bookingTokens BookingToken[]
 
   @@index([businessId])
 }
@@ -93,6 +95,7 @@ model Professional {
   photo      String? // foto do profissional na página pública
 
   appointments Appointment[]
+  bookingTokens BookingToken[]
 
   @@index([businessId])
 }
@@ -128,6 +131,7 @@ model Client {
   appointments  Appointment[]
   conversations Conversation[]
   waitingList   WaitingListEntry[]
+  bookingTokens BookingToken[]
 
   @@unique([businessId, phone])
   @@index([businessId])
@@ -157,11 +161,41 @@ model Appointment {
   upsellOffered   Boolean @default(false)
   upsellAccepted  Boolean @default(false)
 
+  // Pagamento (Página de Agendamento — Parte 3)
+  price           Float?  // valor final cobrado (pode diferir do service.price por desconto/combo)
+  paymentMethod   String? // "pix" | "card" | "local"
+  paymentStatus   String  @default("NONE") // "NONE" | "PENDING" | "PAID" | "FAILED"
+  paymentId       String? // id do pagamento no provedor (Mercado Pago)
+  paymentDiscount Float   @default(0)
+  paymentExpiresAt DateTime? // prazo do Pix (15min) — expirado e não pago = cancelado
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([businessId, date])
   @@index([professionalId, date])
+}
+
+// Link de agendamento com pagamento — gerado pelo bot ou pelo dono para um
+// cliente específico. Expira em 24h. Usado na página pública
+// /{subdomain}/agendar/{token}.
+model BookingToken {
+  id             String        @id @default(cuid())
+  token          String        @unique
+  businessId     String
+  business       Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  clientId       String?
+  client         Client?       @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  serviceId      String?
+  service        Service?      @relation(fields: [serviceId], references: [id])
+  professionalId String?
+  professional   Professional? @relation(fields: [professionalId], references: [id])
+
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([businessId])
 }
 
 enum Category {

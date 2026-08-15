@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { formatCurrency } from "@/lib/utils";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { AlertTriangle, Star, Calendar, Phone } from "lucide-react";
+import { AlertTriangle, Star, Calendar, Phone, Link2, Copy, Check } from "lucide-react";
 import { Breadcrumbs } from "@/components/shared/Breadcrumbs";
 
 const TAG_VARIANT: Record<string, "default" | "success" | "warning" | "danger" | "info"> = {
@@ -24,10 +24,32 @@ const TAG_VARIANT: Record<string, "default" | "success" | "warning" | "danger" |
 
 export function ClientProfile({ clientId }: { clientId: string }) {
   const [client, setClient] = useState<any>(null);
+  const [bookingUrl, setBookingUrl] = useState<string | null>(null);
+  const [generating, setGenerating] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     fetch(`/api/clients/${clientId}`).then((r) => r.json()).then(setClient);
   }, [clientId]);
+
+  async function generateBookingLink() {
+    setGenerating(true);
+    const res = await fetch("/api/booking-tokens", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ clientId }),
+    });
+    const data = await res.json();
+    setBookingUrl(data.url);
+    setGenerating(false);
+  }
+
+  async function copyLink() {
+    if (!bookingUrl) return;
+    await navigator.clipboard.writeText(bookingUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
 
   if (!client) return <p className="text-sm text-foreground/40">Carregando perfil...</p>;
 
@@ -63,6 +85,24 @@ export function ClientProfile({ clientId }: { clientId: string }) {
               <p className="text-xs text-foreground/50">Pontos fidelidade</p>
             </div>
           </div>
+        </div>
+
+        <div className="mt-4 border-t border-surface-border pt-4">
+          {bookingUrl ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <code className="min-w-0 flex-1 truncate rounded-lg bg-background px-3 py-2 text-xs text-foreground/70">{bookingUrl}</code>
+              <Button size="sm" variant="secondary" onClick={copyLink}>
+                {copied ? <Check size={14} className="mr-1" /> : <Copy size={14} className="mr-1" />}
+                {copied ? "Copiado!" : "Copiar"}
+              </Button>
+            </div>
+          ) : (
+            <Button size="sm" variant="secondary" onClick={generateBookingLink} disabled={generating}>
+              <Link2 size={14} className="mr-1" />
+              {generating ? "Gerando..." : "Gerar link de agendamento"}
+            </Button>
+          )}
+          <p className="mt-1.5 text-xs text-foreground/40">Link pessoal, válido por 24h, com agendamento e pagamento.</p>
         </div>
       </Card>
 

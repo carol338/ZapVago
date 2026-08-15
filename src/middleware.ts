@@ -33,5 +33,6 @@ export const config = {
     "/api/waiting-list/:path*",
     "/api/loyalty/:path*",
     "/api/reports/:path*",
+    "/api/booking-tokens/:path*",
   ],
 };
