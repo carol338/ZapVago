@@ -8,7 +8,7 @@ import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import { BookingFlow } from "@/components/booking/BookingFlow";
 
-async function getBookingData(subdomain: string, token: string) {
+async function getBookingData(subdomain: string, token: string, flashSaleId?: string) {
   const bookingToken = await prisma.bookingToken.findUnique({
     where: { token },
     include: { business: true, client: true },
@@ -17,9 +17,14 @@ async function getBookingData(subdomain: string, token: string) {
   if (bookingToken.expiresAt < new Date()) return { notFoundReason: "expired" as const };
   if (!bookingToken.client) return { notFoundReason: "invalid" as const };
 
-  const [services, professionals] = await Promise.all([
+  const [services, professionals, flashSale] = await Promise.all([
     prisma.service.findMany({ where: { businessId: bookingToken.businessId, active: true }, orderBy: { order: "asc" } }),
     prisma.professional.findMany({ where: { businessId: bookingToken.businessId, active: true } }),
+    flashSaleId
+      ? prisma.flashSale.findFirst({
+          where: { id: flashSaleId, businessId: bookingToken.businessId, active: true, endDate: { gte: new Date() } },
+        })
+      : null,
   ]);
 
   return {
@@ -51,6 +56,9 @@ async function getBookingData(subdomain: string, token: string) {
       comboDiscount: s.comboDiscount,
     })),
     professionals: professionals.map((p) => ({ id: p.id, name: p.name, photo: p.photo, color: p.color, serviceIds: p.serviceIds })),
+    flashSale: flashSale
+      ? { id: flashSale.id, name: flashSale.name, discountPercent: flashSale.discountPercent, serviceIds: flashSale.serviceIds }
+      : null,
   };
 }
 
@@ -64,8 +72,14 @@ export async function generateMetadata({
   return { title: `Agendar na ${data.business!.name}` };
 }
 
-export default async function BookingPage({ params }: { params: { subdomain: string; token: string } }) {
-  const data = await getBookingData(params.subdomain, params.token);
+export default async function BookingPage({
+  params,
+  searchParams,
+}: {
+  params: { subdomain: string; token: string };
+  searchParams: { flashSale?: string };
+}) {
+  const data = await getBookingData(params.subdomain, params.token, searchParams.flashSale);
 
   if (data.notFoundReason === "expired") {
     return (
@@ -88,6 +102,7 @@ export default async function BookingPage({ params }: { params: { subdomain: str
       preselected={data.preselected!}
       services={data.services!}
       professionals={data.professionals!}
+      flashSale={data.flashSale}
     />
   );
 }

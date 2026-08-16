@@ -7,7 +7,7 @@
 import { differenceInDays } from "date-fns";
 import { Client } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { sendWhatsAppMessage } from "@/lib/whatsapp";
+import { notifyOwner } from "@/lib/notify";
 
 interface NoShowInput {
   client: Pick<Client, "noShowCount" | "totalVisits" | "cancelLateCount" | "lastVisitAt">;
@@ -76,7 +76,7 @@ Não confirmou o lembrete e já faltou ${appt.client.noShowCount}x no passado.
 
 Acesse o painel pra mandar uma confirmação extra.`;
 
-      await sendWhatsAppMessage(appt.business.owner.phone, msg);
+      await notifyOwner(appt.businessId, "noShowRisk", msg, `/dashboard`);
       await prisma.appointment.update({ where: { id: appt.id }, data: { riskNotifiedAt: new Date() } });
     }
   }

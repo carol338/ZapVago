@@ -89,6 +89,28 @@ textarea {
   animation: dropdown-in 150ms ease;
 }
 
+/* Bloco 3 Parte 5.3 — pisca 3x em verde quando um agendamento novo chega
+   (WhatsApp ou página pública) antes de assumir a cor do profissional. */
+@keyframes new-appointment-blink {
+  0%,
+  100% {
+    background-color: inherit;
+  }
+  15%,
+  45%,
+  75% {
+    background-color: rgba(0, 168, 132, 0.45);
+  }
+  30%,
+  60%,
+  90% {
+    background-color: transparent;
+  }
+}
+.new-appointment-blink {
+  animation: new-appointment-blink 1.8s ease-in-out;
+}
+
 @keyframes shimmer {
   100% {
     transform: translateX(100%);

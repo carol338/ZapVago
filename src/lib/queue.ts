@@ -2,7 +2,7 @@
  * Filas do BullMQ — jobs agendados do ZapVago:
  * - reminders: lembretes 24h/1h antes do agendamento
  * - monthly-report: "Receita do Mês" enviado dia 1 às 08h
- * - waiting-list-timeout: expira oferta de vaga não respondida em 10min
+ * - waiting-list-timeout: expira oferta de vaga não respondida em 15min
  * - flash-sale-dispatch: envia mensagens de feirão para clientes-alvo
  *
  * Requer Redis (REDIS_URL). Em MOCK_MODE sem Redis configurado, as filas
@@ -47,8 +47,8 @@ export async function scheduleMonthlyReport(businessId: string) {
   );
 }
 
-/** Agenda o timeout de 10 minutos para uma oferta de lista de espera. */
+/** Agenda o timeout de 15 minutos para uma oferta de lista de espera. */
 export async function scheduleWaitingListTimeout(waitingListEntryId: string) {
   if (!waitingListQueue) return;
-  await waitingListQueue.add("timeout", { waitingListEntryId }, { delay: 10 * 60 * 1000 });
+  await waitingListQueue.add("timeout", { waitingListEntryId }, { delay: 15 * 60 * 1000 });
 }

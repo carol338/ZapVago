@@ -17,6 +17,7 @@ import {
   LogOut,
   Menu,
   X,
+  ListTodo,
 } from "lucide-react";
 import { ThemeToggle } from "./ThemeToggle";
 
@@ -24,6 +25,7 @@ const NAV = [
   { href: "/dashboard", label: "Agenda", icon: CalendarDays },
   { href: "/dashboard/conversations", label: "Conversas", icon: MessageSquare },
   { href: "/dashboard/clients", label: "Clientes", icon: Users },
+  { href: "/dashboard/waiting-list", label: "Lista de Espera", icon: ListTodo },
   { href: "/dashboard/reports", label: "Relatórios", icon: BarChart3 },
   { href: "/dashboard/flash-sales", label: "Feirões", icon: Zap },
   { href: "/dashboard/loyalty", label: "Fidelidade", icon: Gift },

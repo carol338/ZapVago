@@ -9,6 +9,7 @@ import { requireBusinessId } from "@/lib/api-auth";
 import { addMinutes, startOfWeek, endOfWeek, startOfDay, endOfDay } from "date-fns";
 import { calculateNoShowRisk } from "@/lib/noshow";
 import { scheduleReminders } from "@/lib/queue";
+import { tryRedeemLoyaltyReward } from "@/lib/loyalty";
 
 export async function GET(req: NextRequest) {
   const businessId = await requireBusinessId();
@@ -76,6 +77,11 @@ export async function POST(req: NextRequest) {
     clientConfirmed: false,
   });
 
+  // Fidelidade (Bloco 3 Parte 3.4): aplica automaticamente se o serviço agendado
+  // é o prêmio de uma regra ativa e o cliente já tem pontos suficientes.
+  const reward = await tryRedeemLoyaltyReward(businessId, client, serviceId);
+  const price = reward ? Math.round(service.price * (1 - reward.discountPercent / 100) * 100) / 100 : service.price;
+
   const appointment = await prisma.appointment.create({
     data: {
       businessId,
@@ -86,6 +92,8 @@ export async function POST(req: NextRequest) {
       endTime,
       source: body.source ?? "MANUAL",
       noShowPredicted,
+      price,
+      loyaltyRewardApplied: !!reward,
     },
     include: { client: true, service: true, professional: true },
   });

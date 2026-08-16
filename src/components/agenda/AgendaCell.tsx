@@ -29,6 +29,7 @@ export function AgendaCell({
   onDragStart,
   onDrop,
   onDragOver,
+  blinking,
 }: {
   appointment: CellAppointment | null;
   onClick: () => void;
@@ -36,6 +37,7 @@ export function AgendaCell({
   onDragStart?: () => void;
   onDrop?: () => void;
   onDragOver?: (e: React.DragEvent) => void;
+  blinking?: boolean;
 }) {
   if (!appointment) {
     return (
@@ -61,7 +63,10 @@ export function AgendaCell({
       onDrop={onDrop}
       onDragOver={onDragOver}
       onClick={onClick}
-      className="flex h-20 w-full cursor-pointer flex-col justify-between rounded-md border border-surface-border p-1.5 text-left text-xs transition-transform hover:scale-[1.02]"
+      className={cn(
+        "flex h-20 w-full cursor-pointer flex-col justify-between rounded-md border border-surface-border p-1.5 text-left text-xs transition-transform hover:scale-[1.02]",
+        blinking && "new-appointment-blink"
+      )}
       style={{
         borderLeftColor: color,
         borderLeftWidth: 4,

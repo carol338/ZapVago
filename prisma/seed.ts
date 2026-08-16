@@ -236,7 +236,7 @@ async function main() {
       totalSpent: 1440,
       avgIntervalDays: 30,
       noShowCount: 0,
-      loyaltyPoints: 0,
+      loyaltyPoints: 4, // perto do prêmio (falta 1 pra elegível — Bloco 3 Parte 3)
       preferencias: { professionalPreference: ana.id, bestDays: ["sat"], bestTimes: ["morning"] },
     },
     {
@@ -271,7 +271,7 @@ async function main() {
       avgIntervalDays: 25,
       noShowCount: 1,
       noShowRate: 1 / 3,
-      loyaltyPoints: 1,
+      loyaltyPoints: 2, // Bloco 3 Parte 3 — longe do prêmio (falta 3)
     },
     {
       key: "pedro",
@@ -294,7 +294,7 @@ async function main() {
       totalSpent: 135,
       noShowCount: 2,
       noShowRate: 0.4,
-      loyaltyPoints: 2,
+      loyaltyPoints: 5, // Bloco 3 Parte 3 — elegível pra recompensa (barba grátis)
     },
   ];
 
@@ -625,14 +625,55 @@ async function main() {
     });
   }
 
-  console.log("Criando entrada na lista de espera...");
-  await prisma.waitingListEntry.create({
+  console.log("Criando lista de espera (Bloco 3 Parte 1)...");
+  await prisma.waitingListEntry.createMany({
+    data: [
+      {
+        businessId: business.id,
+        clientId: clients.maria.id, // VIP — deve aparecer primeiro na fila
+        serviceId: luzes.id,
+        preferredDate: addDays(today, 3),
+        flexibleDates: false,
+        preferredPeriod: "morning",
+        createdAt: subDays(today, 2),
+      },
+      {
+        businessId: business.id,
+        clientId: clients.carla.id,
+        serviceId: corte.id,
+        preferredDate: addDays(today, 1),
+        preferredPeriod: "afternoon",
+        createdAt: subDays(today, 5),
+      },
+      {
+        businessId: business.id,
+        clientId: clients.ana_souza.id,
+        serviceId: sobrancelha.id,
+        preferredDate: addDays(today, 2),
+        preferredPeriod: "evening",
+        createdAt: subDays(today, 1),
+      },
+    ],
+  });
+
+  console.log("Criando feirão de exemplo (Bloco 3 Parte 2)...");
+  await prisma.flashSale.create({
     data: {
       businessId: business.id,
-      clientId: clients.carla.id,
-      serviceId: corte.id,
-      preferredDate: addDays(today, 1),
-      preferredPeriod: "afternoon",
+      name: "Terça Maluca",
+      discountPercent: 20,
+      serviceIds: [corte.id, barba.id],
+      professionalIds: [julio.id, marcos.id],
+      startDate: subDays(today, 1),
+      endDate: addDays(today, 1),
+      daysOfWeek: [2],
+      timeStart: "10:00",
+      timeEnd: "14:00",
+      targetClients: ["sumido"],
+      message: "🔥 Terça Maluca! Corte e barba com 20% OFF hoje das 10h às 14h.",
+      sentCount: 12,
+      bookedCount: 3,
+      active: true,
     },
   });
 

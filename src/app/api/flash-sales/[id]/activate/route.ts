@@ -6,6 +6,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireBusinessId } from "@/lib/api-auth";
 import { sendWhatsAppMessage } from "@/lib/whatsapp";
+import { resolveFlashSaleAudience } from "@/lib/flash-sale-audience";
 
 export async function POST(_req: NextRequest, { params }: { params: { id: string } }) {
   const businessId = await requireBusinessId();
@@ -14,20 +15,16 @@ export async function POST(_req: NextRequest, { params }: { params: { id: string
   const flashSale = await prisma.flashSale.findFirst({ where: { id: params.id, businessId } });
   if (!flashSale) return NextResponse.json({ error: "Feirão não encontrado." }, { status: 404 });
 
-  const targetTags = flashSale.targetClients.filter((t) => t !== "todos");
-  const clients = await prisma.client.findMany({
-    where: {
-      businessId,
-      ...(flashSale.targetClients.includes("todos") ? {} : { tags: { hasSome: targetTags } }),
-      OR: [{ silencedUntil: null }, { silencedUntil: { lt: new Date() } }],
-    },
-  });
+  const business = await prisma.business.findUnique({ where: { id: businessId } });
+  const link = `${process.env.NEXT_PUBLIC_APP_URL}/${business?.slug}/agendar?flashSale=${flashSale.id}`;
+
+  const clients = await resolveFlashSaleAudience(businessId, flashSale.targetClients, flashSale.startDate, flashSale.endDate);
 
   let sent = 0;
   for (const c of clients) {
     const msg =
-      flashSale.message ||
-      `🔥 ${flashSale.name}! ${flashSale.discountPercent}% OFF hoje. Bora garantir seu horário? Responda aqui!`;
+      (flashSale.message || `🔥 ${flashSale.name}! ${flashSale.discountPercent}% OFF hoje. Bora garantir seu horário?`) +
+      `\n\n👉 ${link}`;
     const result = await sendWhatsAppMessage(c.phone, msg);
     if (result.success) sent += 1;
   }

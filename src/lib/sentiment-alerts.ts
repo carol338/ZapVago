@@ -7,7 +7,7 @@
  */
 import { startOfDay } from "date-fns";
 import { prisma } from "@/lib/prisma";
-import { sendWhatsAppMessage } from "@/lib/whatsapp";
+import { notifyOwner } from "@/lib/notify";
 
 const alertedToday = new Map<string, string>(); // businessId -> "yyyy-mm-dd"
 
@@ -24,12 +24,11 @@ export async function checkDailyNegativeAlert(businessId: string) {
   const pct = negativas / todayConversations.length;
   if (pct <= 0.2) return;
 
-  const business = await prisma.business.findUnique({ where: { id: businessId }, include: { owner: true } });
-  if (!business?.owner) return;
-
-  await sendWhatsAppMessage(
-    business.owner.phone,
-    `⚠️ Muitos clientes insatisfeitos hoje (${Math.round(pct * 100)}% das conversas). Verifique o painel.`
+  await notifyOwner(
+    businessId,
+    "sentimentAlert",
+    `⚠️ Muitos clientes insatisfeitos hoje (${Math.round(pct * 100)}% das conversas). Verifique o painel.`,
+    "/dashboard/reports"
   );
   alertedToday.set(businessId, todayKey);
 }

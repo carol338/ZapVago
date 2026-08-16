@@ -46,6 +46,13 @@ interface Slot {
   professionalId: string;
 }
 
+interface FlashSaleInfo {
+  id: string;
+  name: string;
+  discountPercent: number;
+  serviceIds: string[];
+}
+
 export function BookingFlow({
   token,
   business,
@@ -53,6 +60,7 @@ export function BookingFlow({
   preselected,
   services,
   professionals,
+  flashSale,
 }: {
   token: string;
   business: { name: string; slug: string; logo: string | null; colorPrimary: string | null; colorSecondary: string | null; phone: string };
@@ -60,6 +68,7 @@ export function BookingFlow({
   preselected: { serviceId: string | null; professionalId: string | null };
   services: Service[];
   professionals: Professional[];
+  flashSale?: FlashSaleInfo | null;
 }) {
   const primary = business.colorPrimary || "#00A884";
 
@@ -140,7 +149,9 @@ export function BookingFlow({
   const manha = slots.filter((s) => Number(s.time.split(":")[0]) < 12);
   const tarde = slots.filter((s) => Number(s.time.split(":")[0]) >= 12);
 
-  const price = effectiveService?.price ?? 0;
+  const isFlashSaleEligible = !!(effectiveService && flashSale?.serviceIds.includes(effectiveService.id));
+  const listPrice = effectiveService?.price ?? 0;
+  const price = isFlashSaleEligible ? Math.round(listPrice * (1 - flashSale!.discountPercent / 100) * 100) / 100 : listPrice;
   const pixPrice = Math.round(price * 0.95 * 100) / 100;
 
   function validateCard(): Record<string, string> {
@@ -177,6 +188,7 @@ export function BookingFlow({
           date: format(selectedDate, "yyyy-MM-dd"),
           time,
           paymentMethod,
+          flashSaleId: isFlashSaleEligible ? flashSale!.id : undefined,
         }),
       });
       const created = await createRes.json();
@@ -340,6 +352,11 @@ export function BookingFlow({
         )}
         <p className="font-semibold">{business.name}</p>
         <p className="mt-1 text-sm text-white/60">Olá, {client.name.split(" ")[0]}! 👋</p>
+        {flashSale && (
+          <div className="mx-auto mt-3 inline-flex items-center gap-1.5 rounded-full bg-orange-500/15 px-3 py-1 text-xs font-semibold text-orange-400">
+            🔥 {flashSale.name} — {flashSale.discountPercent}% OFF
+          </div>
+        )}
       </header>
 
       <div className="mx-auto max-w-md space-y-6 px-4 py-6">
@@ -349,27 +366,41 @@ export function BookingFlow({
           <div className="space-y-2">
             {services
               .filter((s) => s.comboOf.length === 0) // combos aparecem como opção dentro do serviço base
-              .map((s) => (
-                <button
-                  key={s.id}
-                  onClick={() => {
-                    setServiceId(s.id);
-                    setComboId(null);
-                  }}
-                  className={cn(
-                    "flex w-full items-center justify-between rounded-xl border p-3 text-left transition-colors",
-                    serviceId === s.id && !comboId ? "border-white/30 bg-white/[0.06]" : "border-white/10 hover:bg-white/[0.03]"
-                  )}
-                >
-                  <div>
-                    <p className="font-medium">{s.name}</p>
-                    <p className="text-xs text-white/50">{s.duration} min</p>
-                  </div>
-                  <span className="font-semibold" style={{ color: "var(--pub-primary)" }}>
-                    {formatCurrency(s.price)}
-                  </span>
-                </button>
-              ))}
+              .map((s) => {
+                const eligible = !!flashSale?.serviceIds.includes(s.id);
+                const discounted = eligible ? Math.round(s.price * (1 - flashSale!.discountPercent / 100) * 100) / 100 : s.price;
+                return (
+                  <button
+                    key={s.id}
+                    onClick={() => {
+                      setServiceId(s.id);
+                      setComboId(null);
+                    }}
+                    className={cn(
+                      "flex w-full items-center justify-between rounded-xl border p-3 text-left transition-colors",
+                      serviceId === s.id && !comboId ? "border-white/30 bg-white/[0.06]" : "border-white/10 hover:bg-white/[0.03]"
+                    )}
+                  >
+                    <div>
+                      <p className="flex items-center gap-1.5 font-medium">
+                        {s.name}
+                        {eligible && (
+                          <span className="rounded bg-orange-500/20 px-1.5 py-0.5 text-[10px] font-semibold text-orange-400">
+                            {flashSale!.discountPercent}% OFF
+                          </span>
+                        )}
+                      </p>
+                      <p className="text-xs text-white/50">{s.duration} min</p>
+                    </div>
+                    <div className="text-right">
+                      {eligible && <p className="text-xs text-white/40 line-through">{formatCurrency(s.price)}</p>}
+                      <span className="font-semibold" style={{ color: "var(--pub-primary)" }}>
+                        {formatCurrency(discounted)}
+                      </span>
+                    </div>
+                  </button>
+                );
+              })}
           </div>
         </section>
 

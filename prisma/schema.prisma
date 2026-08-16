@@ -41,6 +41,7 @@ model Business {
   waitingList   WaitingListEntry[]
   silentRules   SilentRule[]
   bookingTokens BookingToken[]
+  pushSubscriptions PushSubscription[]
   owner         Owner?
 
   createdAt DateTime @default(now())
@@ -55,8 +56,12 @@ model Owner {
   password   String
   phone      String
 
-  // notifyOn: { newAppointment, dailyReport, weeklyReport, sentimentAlert, channel }
+  // notifyOn: { newAppointment, payment, humanRequested, cancellation, noShowRisk,
+  //   dailyReport, weeklyReport, monthlyReport, sentimentAlert, channel }
+  // channel: "whatsapp" | "push" | "both" — todos os toggles default true se ausentes.
   notifyOn Json @default("{}")
+
+  lastMonthlyReportAt DateTime? // usado pra reconhecer resposta "sim"/"feirão" ao relatório mensal
 
   createdAt DateTime @default(now())
 }
@@ -186,11 +191,17 @@ model Appointment {
   cancelledAt   DateTime? // quando foi cancelado (pra saber se foi em cima da hora)
   riskNotifiedAt DateTime? // evita notificar o dono mais de uma vez pro mesmo risco alto
 
+  // Bloco 3 — Proativo
+  flashSaleId String? // se veio de um link de Feirão (Diferencial 6)
+  fromWaitingList Boolean @default(false) // se veio de uma oferta de Lista de Espera aceita
+  loyaltyRewardApplied Boolean @default(false) // se usou uma recompensa de fidelidade nesse agendamento
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([businessId, date])
   @@index([professionalId, date])
+  @@index([flashSaleId])
 }
 
 // Link de agendamento com pagamento — gerado pelo bot ou pelo dono para um
@@ -315,7 +326,28 @@ model WaitingListEntry {
   flexibleDates   Boolean  @default(true)
   preferredPeriod String? // "morning", "afternoon", "evening"
   notified        Boolean  @default(false)
+
+  // Oferta ativa em aberto (Bloco 3 Parte 1) — quando notified=true, esses
+  // campos guardam QUAL vaga foi oferecida, pra poder confirmar (SIM) ou
+  // expirar em 15min e passar pro próximo candidato da mesma vaga.
+  notifiedAt              DateTime?
+  offeredAppointmentId    String?
+  excludedAppointmentIds  String[]  @default([]) // vagas que já expiraram pra esse cliente (não reoferecer)
+
   createdAt       DateTime @default(now())
+}
+
+// Bloco 3 Parte 5 — Notificações em tempo real (Web Push do navegador do dono)
+model PushSubscription {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  endpoint   String   @unique
+  p256dh     String
+  auth       String
+  createdAt  DateTime @default(now())
+
+  @@index([businessId])
 }
 
 // Diferencial 9 — Modo Silencioso: regras automáticas para clientes problemáticos

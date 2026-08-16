@@ -5,6 +5,8 @@
  */
 import { prisma } from "@/lib/prisma";
 import { sendWhatsAppMessage } from "@/lib/whatsapp";
+import { notifyOwner } from "@/lib/notify";
+import { formatCurrency } from "@/lib/utils";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -29,6 +31,11 @@ export async function confirmAppointmentPayment(appointmentId: string, paymentId
   });
 
   await notifyClientConfirmed(updated);
+  await notifyOwner(
+    updated.businessId,
+    "payment",
+    `💰 Pagamento recebido: ${formatCurrency(updated.price ?? updated.service.price)} de ${updated.client.name} (${updated.service.name}).`
+  );
   return updated;
 }
 

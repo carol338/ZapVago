@@ -7,14 +7,18 @@
 import { useEffect, useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { SentimentDashboard } from "./SentimentDashboard";
 import { startOfWeek, endOfWeek } from "date-fns";
+import { Send } from "lucide-react";
 
 export function ReportsDashboard() {
   const [weekly, setWeekly] = useState<any[]>([]);
   const [professionals, setProfessionals] = useState<any[]>([]);
   const [services, setServices] = useState<any[]>([]);
   const [monthlyMessage, setMonthlyMessage] = useState("");
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
 
   useEffect(() => {
     const start = startOfWeek(new Date(), { weekStartsOn: 1 }).toISOString();
@@ -24,6 +28,13 @@ export function ReportsDashboard() {
     fetch("/api/reports/services?period=30").then((r) => r.json()).then((d) => setServices(d.data));
     fetch("/api/reports/monthly").then((r) => r.json()).then((d) => setMonthlyMessage(d.message));
   }, []);
+
+  async function sendMonthlyReport() {
+    setSending(true);
+    await fetch("/api/reports/monthly/send", { method: "POST" });
+    setSending(false);
+    setSent(true);
+  }
 
   return (
     <div className="space-y-4">
@@ -68,7 +79,13 @@ export function ReportsDashboard() {
       <SentimentDashboard />
 
       <Card>
-        <CardHeader><CardTitle>📊 Receita do mês (prévia da mensagem do WhatsApp)</CardTitle></CardHeader>
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+          <CardTitle>📊 Receita do mês</CardTitle>
+          <Button size="sm" variant="secondary" onClick={sendMonthlyReport} disabled={sending || sent}>
+            <Send size={14} className="mr-1" />
+            {sent ? "Enviado ✅" : sending ? "Enviando..." : "Enviar agora"}
+          </Button>
+        </div>
         <pre className="whitespace-pre-wrap rounded-lg bg-background p-3 text-sm text-foreground/80">{monthlyMessage}</pre>
       </Card>
     </div>

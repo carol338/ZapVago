@@ -18,7 +18,7 @@ export default async function StartBookingPage({
   searchParams,
 }: {
   params: { subdomain: string };
-  searchParams: { service?: string };
+  searchParams: { service?: string; flashSale?: string };
 }) {
   const business = await prisma.business.findUnique({ where: { slug: params.subdomain } });
   if (!business) notFound();
@@ -29,6 +29,18 @@ export default async function StartBookingPage({
     if (service && service.businessId === business.id) serviceName = service.name;
   }
 
+  let flashSaleName: string | null = null;
+  let flashSaleDiscount: number | null = null;
+  if (searchParams.flashSale) {
+    const flashSale = await prisma.flashSale.findFirst({
+      where: { id: searchParams.flashSale, businessId: business.id, active: true, endDate: { gte: new Date() } },
+    });
+    if (flashSale) {
+      flashSaleName = flashSale.name;
+      flashSaleDiscount = flashSale.discountPercent;
+    }
+  }
+
   return (
     <StartBookingForm
       subdomain={params.subdomain}
@@ -37,6 +49,9 @@ export default async function StartBookingPage({
       logo={business.logo}
       serviceId={searchParams.service}
       serviceName={serviceName}
+      flashSaleId={flashSaleName ? searchParams.flashSale : undefined}
+      flashSaleName={flashSaleName}
+      flashSaleDiscount={flashSaleDiscount}
     />
   );
 }

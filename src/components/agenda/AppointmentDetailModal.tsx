@@ -21,6 +21,8 @@ export interface AppointmentDetail {
   professional: { name: string };
   status: string;
   noShowPredicted: number;
+  price?: number | null;
+  loyaltyRewardApplied?: boolean;
 }
 
 const STATUS_LABEL: Record<string, { label: string; variant: "success" | "warning" | "danger" | "default" }> = {
@@ -75,7 +77,10 @@ export function AppointmentDetailModal({
           <Phone size={14} /> {appointment.client.phone}
         </p>
         <div className="rounded-lg bg-background p-3 text-sm">
-          <p><span className="text-foreground/50">Serviço:</span> {appointment.service.name} — {formatCurrency(appointment.service.price)}</p>
+          <p>
+            <span className="text-foreground/50">Serviço:</span> {appointment.service.name} — {formatCurrency(appointment.price ?? appointment.service.price)}
+            {appointment.loyaltyRewardApplied && <span className="ml-1 text-zap-light">🎁 prêmio de fidelidade</span>}
+          </p>
           <p><span className="text-foreground/50">Profissional:</span> {appointment.professional.name}</p>
           <p><span className="text-foreground/50">Data:</span> {format(new Date(appointment.date), "EEEE, dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</p>
         </div>

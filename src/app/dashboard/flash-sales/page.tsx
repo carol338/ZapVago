@@ -5,8 +5,9 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { FlashSaleModal } from "@/components/flash-sales/FlashSaleModal";
-import { Zap, Send, Calendar } from "lucide-react";
+import { Zap, Send, Calendar, TrendingUp, DollarSign } from "lucide-react";
 import { Breadcrumbs } from "@/components/shared/Breadcrumbs";
+import { formatCurrency } from "@/lib/utils";
 
 export default function FlashSalesPage() {
   const [flashSales, setFlashSales] = useState<any[]>([]);
@@ -40,9 +41,13 @@ export default function FlashSalesPage() {
               <Badge variant={f.active ? "success" : "default"}>{f.active ? "Ativo" : "Encerrado"}</Badge>
             </div>
             <p className="mb-3 text-sm text-foreground/60">{f.discountPercent}% OFF — {f.timeStart} às {f.timeEnd}</p>
-            <div className="flex items-center gap-4 text-sm">
+            <div className="mb-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
               <span className="flex items-center gap-1"><Send size={14} className="text-foreground/40" /> {f.sentCount} enviados</span>
               <span className="flex items-center gap-1"><Calendar size={14} className="text-foreground/40" /> {f.bookedCount} agendados</span>
+            </div>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+              <span className="flex items-center gap-1"><TrendingUp size={14} className="text-foreground/40" /> {f.conversionRate}% conversão</span>
+              <span className="flex items-center gap-1 text-zap-light"><DollarSign size={14} /> {formatCurrency(f.revenue)}</span>
             </div>
           </Card>
         ))}

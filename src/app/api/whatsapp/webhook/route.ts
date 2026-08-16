@@ -13,11 +13,21 @@ import { prisma } from "@/lib/prisma";
 import { verifyWebhook, sendWhatsAppMessage, normalizePhone } from "@/lib/whatsapp";
 import { askClaude } from "@/lib/claude";
 import { buildSystemPrompt } from "@/lib/prompt";
-import { visitsUntilNextReward, checkLoyaltyReward } from "@/lib/loyalty";
+import { visitsUntilNextReward, checkLoyaltyReward, tryRedeemLoyaltyReward } from "@/lib/loyalty";
 import { calculateNoShowRisk } from "@/lib/noshow";
 import { checkDailyNegativeAlert } from "@/lib/sentiment-alerts";
 import { scheduleReminders } from "@/lib/queue";
 import { addMinutes } from "date-fns";
+import {
+  findPendingOffer,
+  classifyWaitingListReply,
+  confirmWaitingListOffer,
+  declineWaitingListOffer,
+  skipWaitingListOffer,
+  expireStaleWaitingListOffers,
+} from "@/lib/waiting-list";
+import { handleOwnerReply, isOwnerPhone } from "@/lib/owner-actions";
+import { notifyOwner } from "@/lib/notify";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -47,9 +57,21 @@ export async function POST(req: NextRequest) {
 
     const business = await prisma.business.findFirst({
       where: { whatsappProviderConfig: { path: ["phoneNumberId"], equals: businessPhoneNumberId } },
+      include: { owner: true },
     });
     if (!business) {
       console.error("[webhook] Negócio não encontrado para phone_number_id:", businessPhoneNumberId);
+      return NextResponse.json({ ok: true });
+    }
+
+    // Varredura preguiçosa de ofertas de lista de espera vencidas (Bloco 3 Parte 1) —
+    // sem worker BullMQ rodando 24/7, aproveitamos o tráfego real do webhook pra isso.
+    await expireStaleWaitingListOffers();
+
+    // Mensagem do PRÓPRIO DONO (ex: respondendo "sim"/"feirão" ao relatório mensal)
+    // não passa pelo bot de atendimento a clientes.
+    if (business.owner && isOwnerPhone(business.owner.phone, fromPhone)) {
+      await handleOwnerReply(business.id, text);
       return NextResponse.json({ ok: true });
     }
 
@@ -90,6 +112,21 @@ async function handleIncomingMessage(businessId: string, clientPhone: string, te
       data: { messages: updatedMessages, needsAttention: true },
     });
     return;
+  }
+
+  // Lista de Espera Ativa (Bloco 3 Parte 1): se esse cliente tem uma oferta de
+  // vaga em aberto, interpreta a resposta ANTES de acionar o Claude — é uma
+  // ação transacional (cria agendamento de verdade) e precisa ser confiável
+  // mesmo em MOCK_MODE, sem depender do bot entender o contexto.
+  if (client) {
+    const pendingOffer = await findPendingOffer(businessId, client.id);
+    if (pendingOffer) {
+      const classification = classifyWaitingListReply(text);
+      if (classification !== "unclear") {
+        await respondToWaitingListOffer(conversation.id, history, pendingOffer, classification, clientPhone, text);
+        return;
+      }
+    }
   }
 
   const [services, professionals] = await Promise.all([
@@ -133,6 +170,38 @@ async function handleIncomingMessage(businessId: string, clientPhone: string, te
   await sendWhatsAppMessage(clientPhone, botResult.response);
 }
 
+/** Confirma, recusa ou pula a oferta de vaga da lista de espera, e responde o cliente. */
+async function respondToWaitingListOffer(
+  conversationId: string,
+  history: any[],
+  offer: { id: string; client: { name: string } },
+  classification: "confirm" | "decline" | "skip",
+  clientPhone: string,
+  text: string
+) {
+  let response: string;
+  if (classification === "confirm") {
+    const appointment = await confirmWaitingListOffer(offer.id);
+    response = appointment
+      ? "Perfeito! Seu horário está confirmado ✅ Até lá!"
+      : "Ih, essa vaga já não está mais disponível 😕 Vou te avisar se abrir outra.";
+  } else if (classification === "decline") {
+    await declineWaitingListOffer(offer.id);
+    response = "Sem problemas! Removi você da lista de espera desse serviço.";
+  } else {
+    await skipWaitingListOffer(offer.id);
+    response = "Entendido! Você continua na lista de espera pra próxima vaga que abrir. 🙏";
+  }
+
+  const updatedMessages = [
+    ...history,
+    { role: "client", content: text, timestamp: new Date().toISOString() },
+    { role: "bot", content: response, timestamp: new Date().toISOString() },
+  ];
+  await prisma.conversation.update({ where: { id: conversationId }, data: { messages: updatedMessages } });
+  await sendWhatsAppMessage(clientPhone, response);
+}
+
 async function executeAction(businessId: string, client: any, clientPhone: string, botResult: any) {
   const data = botResult.data ?? {};
 
@@ -167,6 +236,11 @@ async function executeAction(businessId: string, client: any, clientPhone: strin
         clientConfirmed: false,
       });
 
+      // Fidelidade (Bloco 3 Parte 3.4): se é exatamente o serviço-prêmio de uma
+      // regra ativa e o cliente já tem pontos, aplica o desconto automaticamente.
+      const redeemed = await tryRedeemLoyaltyReward(businessId, existingClient, data.serviceId);
+      const price = redeemed ? Math.round(service.price * (1 - redeemed.discountPercent / 100) * 100) / 100 : service.price;
+
       const appointment = await prisma.appointment.create({
         data: {
           businessId,
@@ -178,18 +252,32 @@ async function executeAction(businessId: string, client: any, clientPhone: strin
           source: "WHATSAPP",
           noShowPredicted,
           upsellOffered: !!service.comboOf?.length,
+          price,
+          loyaltyRewardApplied: !!redeemed,
         },
       });
       await scheduleReminders(appointment.id, startDate);
 
-      // Diferencial 10 — Fidelidade: verifica se o cliente atingiu recompensa
-      const reward = await checkLoyaltyReward(businessId, existingClient.loyaltyPoints + 1);
-      if (reward) {
-        await sendWhatsAppMessage(
-          clientPhone,
-          `🎉 Parabéns! Você atingiu ${reward.visitsRequired} visitas e ganhou uma recompensa especial no seu próximo atendimento!`
-        );
+      if (redeemed) {
+        await sendWhatsAppMessage(clientPhone, `🎁 Já incluí sua recompensa de fidelidade nesse agendamento!`);
+      } else {
+        // Avisa se o cliente JÁ tem pontos suficientes pra outra recompensa
+        // (de visitas concluídas de verdade) — não é especulativo sobre esse agendamento.
+        const reward = await checkLoyaltyReward(businessId, existingClient.loyaltyPoints);
+        if (reward) {
+          await sendWhatsAppMessage(
+            clientPhone,
+            `🎉 Você tem ${existingClient.loyaltyPoints} visitas completas e ganhou uma recompensa especial! Quer incluir no seu próximo atendimento?`
+          );
+        }
       }
+
+      const professional = await prisma.professional.findUnique({ where: { id: data.professionalId } });
+      await notifyOwner(
+        businessId,
+        "newAppointment",
+        `🔔 Novo agendamento: ${existingClient.name} — ${service.name} com ${professional?.name ?? ""} em ${startDate.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}.`
+      );
       break;
     }
     case "reschedule": {
@@ -207,8 +295,12 @@ async function executeAction(businessId: string, client: any, clientPhone: strin
     case "cancel": {
       if (!data.appointmentId) return;
       const { offerSlotToWaitingList } = await import("@/lib/waiting-list");
-      await prisma.appointment.updateMany({ where: { id: data.appointmentId, businessId }, data: { status: "CANCELLED" } });
+      await prisma.appointment.updateMany({
+        where: { id: data.appointmentId, businessId },
+        data: { status: "CANCELLED", cancelledAt: new Date() },
+      });
       await offerSlotToWaitingList(data.appointmentId);
+      await notifyOwner(businessId, "cancellation", `❌ ${client?.name ?? "Um cliente"} cancelou um agendamento.`);
       break;
     }
     case "add_to_waiting_list": {
@@ -224,7 +316,14 @@ async function executeAction(businessId: string, client: any, clientPhone: strin
       });
       break;
     }
-    case "transfer_to_human":
+    case "transfer_to_human": {
+      await notifyOwner(
+        businessId,
+        "humanRequested",
+        `🙋 ${client?.name ?? "Um cliente"} (${clientPhone}) pediu pra falar com você no WhatsApp.`
+      );
+      break;
+    }
     case "reply":
     default:
       break;

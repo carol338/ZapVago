@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { formatCurrency } from "@/lib/utils";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { AlertTriangle, Star, Calendar, Phone, Link2, Copy, Check, Brain, MessageCircle, StickyNote } from "lucide-react";
+import { AlertTriangle, Star, Calendar, Phone, Link2, Copy, Check, Brain, MessageCircle, StickyNote, Gift } from "lucide-react";
 import { Breadcrumbs } from "@/components/shared/Breadcrumbs";
 
 const TAG_VARIANT: Record<string, "default" | "success" | "warning" | "danger" | "info"> = {
@@ -52,12 +52,18 @@ export function ClientProfile({ clientId }: { clientId: string }) {
   const [copied, setCopied] = useState(false);
   const [sendingReturn, setSendingReturn] = useState(false);
   const [returnSent, setReturnSent] = useState(false);
+  const [loyaltyRules, setLoyaltyRules] = useState<any[]>([]);
 
   useEffect(() => {
     fetch(`/api/clients/${clientId}`).then((r) => r.json()).then(setClient);
     fetch(`/api/clients/${clientId}/prontuario`).then((r) => r.json()).then(setProntuario);
     fetch(`/api/clients/${clientId}/notes`).then((r) => r.json()).then(setNotes);
+    fetch(`/api/loyalty/rules`).then((r) => r.json()).then(setLoyaltyRules);
   }, [clientId]);
+
+  const eligibleReward = client
+    ? loyaltyRules.filter((r) => r.active && client.loyaltyPoints >= r.visitsRequired).sort((a, b) => b.visitsRequired - a.visitsRequired)[0]
+    : null;
 
   async function generateBookingLink() {
     setGenerating(true);
@@ -134,6 +140,13 @@ export function ClientProfile({ clientId }: { clientId: string }) {
             </div>
           </div>
         </div>
+
+        {eligibleReward && (
+          <div className="mt-3 flex items-center gap-2 rounded-lg border border-zap/30 bg-zap/10 p-3 text-sm text-zap-light">
+            <Gift size={16} className="shrink-0" />
+            Elegível para prêmio — {eligibleReward.rewardDiscount === 100 ? "serviço grátis" : `${eligibleReward.rewardDiscount}% off`} no próximo agendamento.
+          </div>
+        )}
 
         <div className="mt-4 border-t border-surface-border pt-4">
           {bookingUrl ? (

@@ -11,6 +11,9 @@ export function StartBookingForm({
   logo,
   serviceId,
   serviceName,
+  flashSaleId,
+  flashSaleName,
+  flashSaleDiscount,
 }: {
   subdomain: string;
   businessName: string;
@@ -18,6 +21,9 @@ export function StartBookingForm({
   logo: string | null;
   serviceId?: string;
   serviceName: string | null;
+  flashSaleId?: string;
+  flashSaleName?: string | null;
+  flashSaleDiscount?: number | null;
 }) {
   const router = useRouter();
   const primary = colorPrimary || "#00A884";
@@ -38,7 +44,8 @@ export function StartBookingForm({
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Não foi possível iniciar o agendamento.");
-      router.push(`/${subdomain}/agendar/${data.token}`);
+      const suffix = flashSaleId ? `?flashSale=${flashSaleId}` : "";
+      router.push(`/${subdomain}/agendar/${data.token}${suffix}`);
     } catch (err: any) {
       setError(err.message ?? "Algo deu errado. Tenta de novo.");
       setLoading(false);
@@ -64,6 +71,11 @@ export function StartBookingForm({
           <p className="mt-1 text-sm text-white/50">
             {serviceName ? `Agendar "${serviceName}"` : "Vamos agendar seu horário"}
           </p>
+          {flashSaleName && (
+            <div className="mx-auto mt-3 inline-flex items-center gap-1.5 rounded-full bg-orange-500/15 px-3 py-1 text-xs font-semibold text-orange-400">
+              🔥 {flashSaleName} — {flashSaleDiscount}% OFF
+            </div>
+          )}
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-3 rounded-2xl border border-white/10 bg-white/[0.03] p-5">

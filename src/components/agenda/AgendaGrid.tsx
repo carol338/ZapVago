@@ -5,7 +5,7 @@
  * Desktop: grid de dias x horários, com drag-and-drop para remarcar.
  * Mobile: lista vertical de um dia por vez (mais fácil de usar com o polegar).
  */
-import { Fragment, useEffect, useMemo, useState, useCallback } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { addDays, addWeeks, subWeeks, startOfWeek, format, isSameDay, setHours, setMinutes } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { ChevronLeft, ChevronRight, Printer, Zap, Plus, CalendarX2 } from "lucide-react";
@@ -37,20 +37,47 @@ export function AgendaGrid() {
   const [flashSaleOpen, setFlashSaleOpen] = useState(false);
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [blinkingIds, setBlinkingIds] = useState<Set<string>>(new Set());
+  const knownIds = useRef<Set<string> | null>(null);
   const [mobileDayIndex, setMobileDayIndex] = useState(() => {
     const today = new Date();
     const diff = Math.round((today.setHours(0, 0, 0, 0) - weekStart.setHours(0, 0, 0, 0)) / 86400000);
     return diff >= 0 && diff <= 6 ? diff : 0;
   });
 
-  const loadAppointments = useCallback(async () => {
-    setLoading(true);
-    const params = new URLSearchParams({ date: weekStart.toISOString(), view: "week" });
-    if (professionalFilter) params.set("professionalId", professionalFilter);
-    const res = await fetch(`/api/appointments?${params}`);
-    if (res.ok) setAppointments(await res.json());
-    setLoading(false);
-  }, [weekStart, professionalFilter]);
+  const loadAppointments = useCallback(
+    async (opts: { silent?: boolean } = {}) => {
+      if (!opts.silent) setLoading(true);
+      const params = new URLSearchParams({ date: weekStart.toISOString(), view: "week" });
+      if (professionalFilter) params.set("professionalId", professionalFilter);
+      const res = await fetch(`/api/appointments?${params}`);
+      if (res.ok) {
+        const data = await res.json();
+
+        // Bloco 3 Parte 5.3: detecta agendamentos novos desde a última checagem
+        // (chegaram pelo WhatsApp ou pela página pública) e faz a célula piscar.
+        const ids = new Set<string>(data.map((a: any) => a.id));
+        if (knownIds.current) {
+          const newOnes = [...ids].filter((id) => !knownIds.current!.has(id));
+          if (newOnes.length > 0) {
+            setBlinkingIds((prev) => new Set([...prev, ...newOnes]));
+            setTimeout(() => {
+              setBlinkingIds((prev) => {
+                const next = new Set(prev);
+                newOnes.forEach((id) => next.delete(id));
+                return next;
+              });
+            }, 1800);
+          }
+        }
+        knownIds.current = ids;
+
+        setAppointments(data);
+      }
+      if (!opts.silent) setLoading(false);
+    },
+    [weekStart, professionalFilter]
+  );
 
   useEffect(() => {
     fetch("/api/services").then((r) => r.json()).then(setServices);
@@ -58,7 +85,15 @@ export function AgendaGrid() {
   }, []);
 
   useEffect(() => {
+    knownIds.current = null; // nova semana/filtro: não pisca tudo como "novo"
     loadAppointments();
+  }, [loadAppointments]);
+
+  // Poll leve pra pegar agendamentos criados pelo WhatsApp/página pública
+  // enquanto o dono está com o painel aberto (não há WebSocket nesse ambiente).
+  useEffect(() => {
+    const interval = setInterval(() => loadAppointments({ silent: true }), 15000);
+    return () => clearInterval(interval);
   }, [loadAppointments]);
 
   const days = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart]);
@@ -78,7 +113,7 @@ export function AgendaGrid() {
       serviceName: a.service.name,
       professionalName: a.professional.name,
       professionalColor: a.professional.color,
-      price: a.service.price,
+      price: a.price ?? a.service.price,
       status: a.status,
       risk: a.noShowPredicted,
     };
@@ -93,6 +128,8 @@ export function AgendaGrid() {
       professional: a.professional,
       status: a.status,
       noShowPredicted: a.noShowPredicted,
+      price: a.price,
+      loyaltyRewardApplied: a.loyaltyRewardApplied,
     });
   }
 
@@ -113,7 +150,7 @@ export function AgendaGrid() {
   const todayAppointments = appointments.filter((a) => isSameDay(new Date(a.date), today) && a.status !== "CANCELLED");
   const faturamentoHoje = todayAppointments
     .filter((a) => a.status === "COMPLETED" || a.status === "CONFIRMED")
-    .reduce((s, a) => s + a.service.price, 0);
+    .reduce((s, a) => s + (a.price ?? a.service.price), 0);
   const comparecimentosHoje = todayAppointments.filter((a) => a.status === "COMPLETED").length;
   const faltasHoje = todayAppointments.filter((a) => a.status === "NO_SHOW").length;
   const altoRiscoHoje = todayAppointments.filter((a) => a.noShowPredicted >= 0.5).length;
@@ -249,7 +286,10 @@ export function AgendaGrid() {
                 <button
                   key={hour}
                   onClick={() => openDetail(appt)}
-                  className="flex min-h-[44px] w-full items-start gap-3 rounded-lg border border-surface-border p-3 text-left"
+                  className={cn(
+                    "flex min-h-[44px] w-full items-start gap-3 rounded-lg border border-surface-border p-3 text-left",
+                    blinkingIds.has(appt.id) && "new-appointment-blink"
+                  )}
                   style={{
                     borderLeftColor: color,
                     borderLeftWidth: 4,
@@ -260,7 +300,7 @@ export function AgendaGrid() {
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-semibold">{appt.client.name}</p>
                     <p className="truncate text-xs text-foreground/60">
-                      {appt.service.name} · {appt.professional.name} · {formatCurrency(appt.service.price)}
+                      {appt.service.name} · {appt.professional.name} · {formatCurrency(appt.price ?? appt.service.price)}
                     </p>
                     <div className="mt-1.5 flex flex-wrap items-center gap-1">
                       <span className={cn("rounded px-1.5 py-0.5 text-[10px] font-medium leading-none", badge.className)}>
@@ -320,6 +360,7 @@ export function AgendaGrid() {
                       onDragStart={() => appt && setDraggedId(appt.id)}
                       onDragOver={(e) => e.preventDefault()}
                       onDrop={() => handleDrop(day, hour)}
+                      blinking={!!appt && blinkingIds.has(appt.id)}
                     />
                   </div>
                 );
