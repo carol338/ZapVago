@@ -94,7 +94,14 @@ export function NewAppointmentModal({
     const res = await fetch("/api/appointments", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ clientName, clientPhone, serviceId: effectiveServiceId, professionalId, date, source: "MANUAL" }),
+      body: JSON.stringify({
+        clientName,
+        clientPhone,
+        serviceId: effectiveServiceId,
+        professionalId,
+        date: new Date(date).toISOString(),
+        source: "MANUAL",
+      }),
     });
     setLoading(false);
     if (!res.ok) {
