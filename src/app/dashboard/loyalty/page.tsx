@@ -17,6 +17,9 @@ export default function LoyaltyPage() {
   const [visitsRequired, setVisitsRequired] = useState(5);
   const [rewardServiceId, setRewardServiceId] = useState("");
   const [rewardDiscount, setRewardDiscount] = useState(100);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [ruleToDelete, setRuleToDelete] = useState<any | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   function load() {
     fetch("/api/loyalty/rules").then((r) => r.json()).then(setRules);
@@ -40,8 +43,27 @@ export default function LoyaltyPage() {
     load();
   }
 
-  async function removeRule(id: string) {
-    await fetch(`/api/loyalty/rules/${id}`, { method: "DELETE" });
+  async function toggleActive(rule: any) {
+    setTogglingId(rule.id);
+    const nextActive = !rule.active;
+    setRules((prev) => prev.map((r) => (r.id === rule.id ? { ...r, active: nextActive } : r)));
+    try {
+      await fetch(`/api/loyalty/rules/${rule.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ active: nextActive }),
+      });
+    } finally {
+      setTogglingId(null);
+    }
+  }
+
+  async function confirmDelete() {
+    if (!ruleToDelete) return;
+    setDeleting(true);
+    await fetch(`/api/loyalty/rules/${ruleToDelete.id}`, { method: "DELETE" });
+    setDeleting(false);
+    setRuleToDelete(null);
     load();
   }
 
@@ -57,21 +79,32 @@ export default function LoyaltyPage() {
         {rules.map((r) => {
           const service = services.find((s) => s.id === r.rewardServiceId);
           return (
-            <Card key={r.id}>
+            <Card key={r.id} className={r.active === false ? "opacity-60" : undefined}>
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-3">
                   <Gift className="text-zap" size={22} />
                   <div>
                     <p className="font-semibold">A cada {r.visitsRequired} visitas</p>
                     <p className="text-sm text-foreground/60">
-                      {r.rewardDiscount === 100 ? "1 " : `${r.rewardDiscount}% off em `}
-                      {service?.name ?? "serviço"} grátis
+                      Prêmio: {service?.name ?? "serviço"} ({r.rewardDiscount === 100 ? "100% desconto" : `${r.rewardDiscount}% off`})
                     </p>
                   </div>
                 </div>
-                <button onClick={() => removeRule(r.id)} className="-m-2 flex h-11 w-11 items-center justify-center rounded-lg text-foreground/40 transition-colors hover:bg-risk-high/10 hover:text-risk-high">
+                <button onClick={() => setRuleToDelete(r)} className="-m-2 flex h-11 w-11 items-center justify-center rounded-lg text-foreground/40 transition-colors hover:bg-risk-high/10 hover:text-risk-high">
                   <Trash2 size={16} />
                 </button>
+              </div>
+
+              <div className="mt-3 flex items-center gap-2 border-t border-surface-border pt-3">
+                <button
+                  type="button"
+                  onClick={() => toggleActive(r)}
+                  disabled={togglingId === r.id}
+                  className={`h-5 w-9 shrink-0 rounded-full transition-colors disabled:opacity-50 ${r.active !== false ? "bg-zap" : "bg-surface-border"}`}
+                >
+                  <div className={`h-4 w-4 rounded-full bg-white transition-transform ${r.active !== false ? "translate-x-4" : "translate-x-0.5"}`} />
+                </button>
+                <span className="text-sm text-foreground/60">{r.active !== false ? "Ativa" : "Inativa"}</span>
               </div>
             </Card>
           );
@@ -97,6 +130,29 @@ export default function LoyaltyPage() {
           </div>
           <Button onClick={createRule} className="w-full">Criar regra</Button>
         </div>
+      </Modal>
+
+      <Modal open={!!ruleToDelete} onClose={() => setRuleToDelete(null)} title="⚠️ Excluir regra">
+        {ruleToDelete && (
+          <div className="space-y-4">
+            <p className="text-sm text-foreground/80">
+              Tem certeza que deseja excluir a regra{" "}
+              <span className="font-semibold">
+                &quot;A cada {ruleToDelete.visitsRequired} visitas, {services.find((s) => s.id === ruleToDelete.rewardServiceId)?.name ?? "serviço"} grátis&quot;
+              </span>
+              ?
+            </p>
+            <p className="text-sm text-risk-high">Esta ação não pode ser desfeita.</p>
+            <div className="flex gap-2">
+              <Button variant="danger" onClick={confirmDelete} disabled={deleting} className="flex-1">
+                {deleting ? "Excluindo..." : "Excluir"}
+              </Button>
+              <Button variant="secondary" onClick={() => setRuleToDelete(null)} disabled={deleting} className="flex-1">
+                Cancelar
+              </Button>
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   );
