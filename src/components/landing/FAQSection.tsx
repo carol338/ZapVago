@@ -6,14 +6,38 @@ import { cn } from "@/lib/utils";
 import { FadeIn } from "./FadeIn";
 
 const FAQS = [
-  { q: "Meu cliente precisa baixar app?", a: "Não, tudo pelo WhatsApp — ele já usa todo dia." },
-  { q: "Quanto tempo leva para configurar?", a: "Cerca de 5 minutos: cadastro, serviços e horários." },
-  { q: "Precisa cartão de crédito para testar?", a: "Não, o teste de 7 dias é grátis, sem cartão." },
-  { q: "Funciona para o meu tipo de negócio?", a: "Sim — qualquer negócio que cobra por hora ou serviço agendado." },
-  { q: "Posso cancelar quando quiser?", a: "Sim, sem multa e sem fidelidade." },
-  { q: "Como recebo os pagamentos?", a: "Pix e cartão, processados via Mercado Pago." },
-  { q: "Meus dados estão seguros?", a: "Sim, com criptografia de ponta a ponta." },
-  { q: "Preciso de algum equipamento especial?", a: "Não, só um celular com WhatsApp." },
+  {
+    q: "Meu cliente precisa baixar algum aplicativo?",
+    a: "Não. Tudo acontece no WhatsApp que ele já usa. Ele manda mensagem, o assistente responde e agenda. Simples assim.",
+  },
+  {
+    q: "Quanto tempo leva para configurar?",
+    a: "Menos de 5 minutos. Você cria a conta, conecta o WhatsApp e cadastra seus serviços. Pronto.",
+  },
+  {
+    q: "Preciso de cartão de crédito para testar?",
+    a: "Não. O teste é totalmente grátis. Você só paga se continuar depois do período de teste.",
+  },
+  {
+    q: "Funciona para o meu tipo de negócio?",
+    a: "Se você atende por hora marcada, sim. Barbearias, salões, clínicas, pet shops, consultórios — todos usam.",
+  },
+  {
+    q: "Como recebo os pagamentos dos clientes?",
+    a: "Direto na sua conta via Pix ou cartão. O ZapVago processa e você recebe em até 2 dias úteis.",
+  },
+  {
+    q: "O que acontece se um cliente faltar?",
+    a: "Com o pagamento antecipado, as faltas caem 80%. E você ainda tem a previsão de faltas para agir antes.",
+  },
+  {
+    q: "Posso cancelar quando quiser?",
+    a: "Sim. Sem multa, sem perguntas, sem burocracia. É só cancelar nas configurações.",
+  },
+  {
+    q: "Meus dados estão seguros?",
+    a: "Sim. Usamos criptografia de ponta a ponta e seguimos a LGPD. Seus dados e os dos seus clientes estão protegidos.",
+  },
 ];
 
 export function FAQSection() {
