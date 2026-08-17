@@ -39,6 +39,7 @@ model Business {
   loyaltyRules  LoyaltyRule[]
   flashSales    FlashSale[]
   waitingList   WaitingListEntry[]
+  waitingListEvents WaitingListEvent[]
   silentRules   SilentRule[]
   bookingTokens BookingToken[]
   pushSubscriptions PushSubscription[]
@@ -334,7 +335,26 @@ model WaitingListEntry {
   offeredAppointmentId    String?
   excludedAppointmentIds  String[]  @default([]) // vagas que já expiraram pra esse cliente (não reoferecer)
 
+  // Resultado final (feedback visual — não deleta mais ao confirmar/recusar,
+  // só marca como resolvido e some da fila ativa).
+  resolvedAt DateTime?
+  resolution String? // "booked" | "declined"
+
   createdAt       DateTime @default(now())
+}
+
+// Log de eventos da Lista de Espera Ativa (Bloco 3 Parte 1) — permite ver o
+// fluxo completo (cancelamento → notificação → resposta → agendamento) sem
+// depender do WhatsApp real, já que tudo roda em MOCK_MODE por enquanto.
+model WaitingListEvent {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  type       String // "cancelled" | "notified" | "replied_yes" | "replied_no" | "replied_skip" | "booked" | "expired"
+  message    String
+  createdAt  DateTime @default(now())
+
+  @@index([businessId, createdAt])
 }
 
 // Bloco 3 Parte 5 — Notificações em tempo real (Web Push do navegador do dono)

@@ -17,8 +17,15 @@ export async function GET() {
     orderBy: { createdAt: "asc" },
   });
 
-  // Ordena por prioridade: VIP primeiro, depois quem espera há mais tempo.
+  // Fila ativa primeiro (VIP, depois quem espera há mais tempo); resolvidos
+  // (agendados/recusados) aparecem depois, mais recentes primeiro — é
+  // histórico, não fila de verdade.
   const sorted = entries.sort((a, b) => {
+    const aResolved = a.resolvedAt ? 1 : 0;
+    const bResolved = b.resolvedAt ? 1 : 0;
+    if (aResolved !== bResolved) return aResolved - bResolved;
+    if (aResolved && bResolved) return b.resolvedAt!.getTime() - a.resolvedAt!.getTime();
+
     const aVip = a.client.tags.includes("vip") ? 0 : 1;
     const bVip = b.client.tags.includes("vip") ? 0 : 1;
     if (aVip !== bVip) return aVip - bVip;

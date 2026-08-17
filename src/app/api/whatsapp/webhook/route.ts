@@ -294,11 +294,14 @@ async function executeAction(businessId: string, client: any, clientPhone: strin
     }
     case "cancel": {
       if (!data.appointmentId) return;
-      const { offerSlotToWaitingList } = await import("@/lib/waiting-list");
-      await prisma.appointment.updateMany({
-        where: { id: data.appointmentId, businessId },
+      const { offerSlotToWaitingList, logAppointmentCancelled } = await import("@/lib/waiting-list");
+      const cancelledAppt = await prisma.appointment.findFirst({ where: { id: data.appointmentId, businessId }, include: { service: true } });
+      if (!cancelledAppt) return;
+      await prisma.appointment.update({
+        where: { id: data.appointmentId },
         data: { status: "CANCELLED", cancelledAt: new Date() },
       });
+      await logAppointmentCancelled(businessId, client?.name ?? "Cliente", cancelledAppt.service.name);
       await offerSlotToWaitingList(data.appointmentId);
       await notifyOwner(businessId, "cancellation", `❌ ${client?.name ?? "Um cliente"} cancelou um agendamento.`);
       break;

@@ -5,6 +5,10 @@
  * qual serviço, ordenado por prioridade (VIP primeiro, depois quem espera
  * há mais tempo). Quando um agendamento é cancelado, o primeiro elegível é
  * notificado automaticamente (ver src/lib/waiting-list.ts).
+ *
+ * Cada entrada mostra o status atual da oferta, e "Eventos Recentes" dá um
+ * log do fluxo inteiro (cancelamento → notificação → resposta →
+ * agendamento) — dá pra testar sem precisar do WhatsApp real.
  */
 import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
@@ -13,11 +17,22 @@ import { Button } from "@/components/ui/button";
 import { Breadcrumbs } from "@/components/shared/Breadcrumbs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AddWaitingListModal } from "@/components/waiting-list/AddWaitingListModal";
-import { Plus, Clock, Bell, Trash2, Star } from "lucide-react";
+import { Plus, Clock, Bell, Trash2, Star, History } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { cn } from "@/lib/utils";
 
 const PERIOD_LABEL: Record<string, string> = { morning: "Manhã", afternoon: "Tarde", evening: "Noite" };
+
+const EVENT_EMOJI: Record<string, string> = {
+  cancelled: "🗑️",
+  notified: "📤",
+  replied_yes: "✅",
+  replied_no: "🚫",
+  replied_skip: "🙏",
+  booked: "📅",
+  expired: "⌛",
+};
 
 function waitLabel(createdAt: string) {
   const days = Math.floor((Date.now() - new Date(createdAt).getTime()) / 86400000);
@@ -26,26 +41,50 @@ function waitLabel(createdAt: string) {
   return `há ${days} dias`;
 }
 
+function entryStatus(entry: any): { emoji: string; label: string; className: string } {
+  if (entry.resolvedAt && entry.resolution === "booked") {
+    return { emoji: "✅", label: "Agendado", className: "bg-risk-low/15 text-risk-low" };
+  }
+  if (entry.resolvedAt && entry.resolution === "declined") {
+    return { emoji: "🚫", label: "Recusou", className: "bg-foreground/10 text-foreground/50" };
+  }
+  if (entry.notified && entry.notifiedAt) {
+    const hora = format(new Date(entry.notifiedAt), "dd/MM HH:mm", { locale: ptBR });
+    return { emoji: "📤", label: `Notificado (${hora}) · aguardando resposta`, className: "bg-risk-mid/15 text-risk-mid" };
+  }
+  if (entry.excludedAppointmentIds?.length > 0) {
+    return { emoji: "❌", label: "Expirado — na fila pra próxima vaga", className: "bg-foreground/10 text-foreground/50" };
+  }
+  return { emoji: "🕐", label: "Aguardando", className: "bg-zap/15 text-zap-light" };
+}
+
 export default function WaitingListPage() {
   const [entries, setEntries] = useState<any[]>([]);
+  const [events, setEvents] = useState<any[]>([]);
   const [services, setServices] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
 
-  function load() {
-    setLoading(true);
-    fetch("/api/waiting-list")
-      .then((r) => r.json())
-      .then((data) => {
-        setEntries(data);
-        setLoading(false);
-      });
+  function load(opts: { silent?: boolean } = {}) {
+    if (!opts.silent) setLoading(true);
+    Promise.all([
+      fetch("/api/waiting-list").then((r) => r.json()),
+      fetch("/api/waiting-list/events").then((r) => r.json()),
+    ]).then(([entriesData, eventsData]) => {
+      setEntries(entriesData);
+      setEvents(eventsData);
+      if (!opts.silent) setLoading(false);
+    });
   }
 
   useEffect(() => {
     load();
     fetch("/api/services").then((r) => r.json()).then(setServices);
+    // Sem WebSocket nesse ambiente — poll leve pra refletir cancelamentos
+    // feitos em outra tela (ex: agenda) sem precisar recarregar a página.
+    const interval = setInterval(() => load({ silent: true }), 10000);
+    return () => clearInterval(interval);
   }, []);
 
   async function notify(id: string) {
@@ -60,6 +99,9 @@ export default function WaitingListPage() {
     setBusyId(null);
     load();
   }
+
+  const activeEntries = entries.filter((e) => !e.resolvedAt);
+  const resolvedEntries = entries.filter((e) => e.resolvedAt);
 
   return (
     <div>
@@ -90,8 +132,9 @@ export default function WaitingListPage() {
         </Card>
       ) : (
         <div className="space-y-2">
-          {entries.map((entry) => {
+          {activeEntries.map((entry) => {
             const isVip = entry.client.tags?.includes("vip");
+            const st = entryStatus(entry);
             return (
               <Card key={entry.id} className="flex flex-wrap items-center justify-between gap-3">
                 <div className="min-w-0 flex-1">
@@ -102,7 +145,9 @@ export default function WaitingListPage() {
                         <Star size={10} className="mr-0.5 inline fill-current" /> VIP
                       </Badge>
                     )}
-                    {entry.notified && <Badge variant="warning">Oferta enviada</Badge>}
+                    <span className={cn("rounded px-1.5 py-0.5 text-[11px] font-medium leading-none", st.className)}>
+                      {st.emoji} {st.label}
+                    </span>
                   </div>
                   <p className="text-sm text-foreground/60">
                     {entry.service.name} · {entry.flexibleDates ? "qualquer data" : format(new Date(entry.preferredDate), "dd/MM/yyyy", { locale: ptBR })}
@@ -121,8 +166,53 @@ export default function WaitingListPage() {
               </Card>
             );
           })}
+
+          {resolvedEntries.length > 0 && (
+            <div className="pt-2">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-foreground/40">Resolvidos recentemente</p>
+              <div className="space-y-2">
+                {resolvedEntries.map((entry) => {
+                  const st = entryStatus(entry);
+                  return (
+                    <Card key={entry.id} className="flex flex-wrap items-center justify-between gap-3 opacity-70">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <p className="font-semibold">{entry.client.name}</p>
+                          <span className={cn("rounded px-1.5 py-0.5 text-[11px] font-medium leading-none", st.className)}>
+                            {st.emoji} {st.label}
+                          </span>
+                        </div>
+                        <p className="text-sm text-foreground/60">{entry.service.name}</p>
+                      </div>
+                    </Card>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       )}
+
+      <Card className="mt-6">
+        <div className="mb-3 flex items-center gap-2">
+          <History size={16} className="text-foreground/50" />
+          <h2 className="font-semibold">Eventos Recentes</h2>
+        </div>
+        {events.length === 0 ? (
+          <p className="text-sm text-foreground/40">Nenhum evento ainda.</p>
+        ) : (
+          <div className="space-y-1.5">
+            {events.map((ev) => (
+              <p key={ev.id} className="text-sm text-foreground/70">
+                <span className="mr-1.5">{EVENT_EMOJI[ev.type] ?? "•"}</span>
+                <span className="text-foreground/40">{format(new Date(ev.createdAt), "dd/MM HH:mm", { locale: ptBR })}</span>
+                {" — "}
+                {ev.message}
+              </p>
+            ))}
+          </div>
+        )}
+      </Card>
 
       <AddWaitingListModal open={modalOpen} onClose={() => setModalOpen(false)} onCreated={load} services={services} />
     </div>

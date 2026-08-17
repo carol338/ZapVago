@@ -8,7 +8,7 @@ import { requireBusinessId } from "@/lib/api-auth";
 import { addMinutes, differenceInHours } from "date-fns";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { offerSlotToWaitingList } from "@/lib/waiting-list";
+import { offerSlotToWaitingList, logAppointmentCancelled } from "@/lib/waiting-list";
 import { scheduleReminders } from "@/lib/queue";
 import { recalculateClientFutureRisk } from "@/lib/noshow";
 import { sendWhatsAppMessage } from "@/lib/whatsapp";
@@ -67,6 +67,8 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
   }
   await recalculateClientFutureRisk(appointment.clientId);
 
+  await logAppointmentCancelled(businessId, appointment.client.name, appointment.service.name);
+
   // Diferencial 2: Lista de Espera Ativa — oferece a vaga imediatamente
   const offered = await offerSlotToWaitingList(params.id);
 
@@ -77,5 +79,9 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
     `Oi ${appointment.client.name.split(" ")[0]}, seu horário de ${appointment.service.name} com ${appointment.professional.name} (${dataFormatada}) foi cancelado. Qualquer coisa é só chamar aqui pra remarcar. 🙏`
   );
 
-  return NextResponse.json({ ok: true, offeredToWaitingList: !!offered });
+  return NextResponse.json({
+    ok: true,
+    offeredToWaitingList: !!offered,
+    offeredClientName: offered ? offered.client.name : null,
+  });
 }

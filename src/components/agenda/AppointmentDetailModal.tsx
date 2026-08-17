@@ -48,11 +48,13 @@ export function AppointmentDetailModal({
   const [confirmationSent, setConfirmationSent] = useState(false);
   const [confirmingCancel, setConfirmingCancel] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [cancelResult, setCancelResult] = useState<{ offeredClientName: string | null } | null>(null);
 
   useEffect(() => {
     setConfirmingCancel(false);
     setActionError(null);
     setConfirmationSent(false);
+    setCancelResult(null);
   }, [appointment?.id]);
 
   if (!appointment) return null;
@@ -62,14 +64,20 @@ export function AppointmentDetailModal({
     setActionError(null);
     const url = action === "cancel" ? `/api/appointments/${appointment!.id}` : `/api/appointments/${appointment!.id}/${action}`;
     const res = await fetch(url, { method: action === "cancel" ? "DELETE" : "PUT" });
+    const data = await res.json().catch(() => ({}));
     setLoading(null);
     if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
       setActionError(data.error ?? "Não foi possível concluir a ação. Tenta de novo.");
       return;
     }
-    setConfirmingCancel(false);
     onChanged();
+    if (action === "cancel") {
+      // Fica aberto mostrando o resultado (inclui se a lista de espera foi
+      // acionada) em vez de fechar direto — só o dono decide fechar.
+      setConfirmingCancel(false);
+      setCancelResult({ offeredClientName: data.offeredClientName ?? null });
+      return;
+    }
     onClose();
   }
 
@@ -81,6 +89,24 @@ export function AppointmentDetailModal({
   }
 
   const status = STATUS_LABEL[appointment.status] ?? STATUS_LABEL.CONFIRMED;
+
+  if (cancelResult) {
+    return (
+      <Modal open={open} onClose={onClose} title="Detalhes do agendamento">
+        <div className="space-y-3">
+          <div className="rounded-lg border border-risk-low/30 bg-risk-low/10 p-3 text-sm text-risk-low">
+            ✅ Agendamento cancelado com sucesso.
+          </div>
+          {cancelResult.offeredClientName && (
+            <div className="rounded-lg border border-zap/30 bg-zap/10 p-3 text-sm text-zap-light">
+              📤 Lista de espera acionada: {cancelResult.offeredClientName} foi notificado sobre o horário vago.
+            </div>
+          )}
+          <Button size="sm" className="w-full" onClick={onClose}>Fechar</Button>
+        </div>
+      </Modal>
+    );
+  }
 
   return (
     <Modal open={open} onClose={onClose} title="Detalhes do agendamento">
