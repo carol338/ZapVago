@@ -18,16 +18,22 @@ export function VisualDemo() {
             <div className="mb-3 flex items-center gap-2 text-sm font-medium text-foreground/70">
               <Calendar size={16} className="text-zap-light" /> Planilha de agenda
             </div>
-            <div className="space-y-1.5">
+            <div className="space-y-1.5 text-xs">
               {[
-                { color: "#00A884", w: "70%" },
-                { color: "#3B82F6", w: "55%" },
-                { color: "#F59E0B", w: "85%" },
-                { color: "#00A884", w: "40%" },
-              ].map((r, i) => (
-                <div key={i} className="flex items-center gap-2 rounded bg-background px-2 py-2">
-                  <span className="h-6 w-1 rounded-full" style={{ backgroundColor: r.color }} />
-                  <span className="h-2 rounded-full bg-surface-hover" style={{ width: r.w }} />
+                { color: "#00A884", time: "09:00", name: "Maria Silva", service: "Corte + Escova" },
+                { color: "#3B82F6", time: "10:30", name: "João Pedro", service: "Barba" },
+                { color: "#F59E0B", time: "14:00", name: "Ana Costa", service: "Hidratação" },
+                { color: "#00A884", time: "16:30", name: "Rafael Souza", service: "Corte" },
+              ].map((r) => (
+                <div key={r.time} className="flex items-center justify-between gap-2 rounded bg-background px-2.5 py-2">
+                  <div className="flex items-center gap-2">
+                    <span className="h-6 w-1 shrink-0 rounded-full" style={{ backgroundColor: r.color }} />
+                    <div>
+                      <p className="font-medium">{r.name}</p>
+                      <p className="text-foreground/50">{r.service}</p>
+                    </div>
+                  </div>
+                  <span className="shrink-0 text-foreground/50">{r.time}</span>
                 </div>
               ))}
             </div>
@@ -40,10 +46,15 @@ export function VisualDemo() {
               <Store size={16} className="text-zap-light" /> Página pública de agendamento
             </div>
             <div className="rounded-lg bg-background p-3">
-              <div className="mb-2 h-16 rounded-lg bg-gradient-to-br from-zap/30 to-zap/5" />
-              <div className="mb-1 h-2.5 w-2/3 rounded-full bg-surface-hover" />
-              <div className="h-2 w-1/3 rounded-full bg-surface-hover" />
-              <div className="mt-3 h-9 w-full rounded-lg bg-zap/80" />
+              <div className="mb-3 flex h-16 flex-col justify-center rounded-lg bg-gradient-to-br from-zap/30 to-zap/5 px-3">
+                <p className="text-sm font-semibold">Barbearia do Zé</p>
+                <p className="text-xs text-foreground/60">Corte, barba e muito mais</p>
+              </div>
+              <p className="mb-1 text-xs font-medium text-foreground/70">Escolha um serviço</p>
+              <p className="mb-3 text-xs text-foreground/50">Corte de Cabelo · 30min · R$ 45,00</p>
+              <div className="flex h-9 w-full items-center justify-center rounded-lg bg-zap text-xs font-semibold text-white">
+                Agendar agora
+              </div>
             </div>
           </Card>
         </FadeIn>
