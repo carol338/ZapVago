@@ -9,6 +9,7 @@ import { Differentials } from "@/components/landing/Differentials";
 import { VisualDemo } from "@/components/landing/VisualDemo";
 import { Testimonials } from "@/components/landing/Testimonials";
 import { Pricing } from "@/components/landing/Pricing";
+import { PreFAQCTA } from "@/components/landing/PreFAQCTA";
 import { FAQSection } from "@/components/landing/FAQSection";
 import { FinalCTA } from "@/components/landing/FinalCTA";
 import { LandingFooter } from "@/components/landing/LandingFooter";
@@ -32,6 +33,7 @@ export default function LandingPage() {
       <VisualDemo />
       <Testimonials />
       <Pricing />
+      <PreFAQCTA />
       <FAQSection />
       <FinalCTA />
       <LandingFooter />
