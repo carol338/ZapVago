@@ -92,7 +92,7 @@ export function AgendaGrid() {
   // Poll leve pra pegar agendamentos criados pelo WhatsApp/página pública
   // enquanto o dono está com o painel aberto (não há WebSocket nesse ambiente).
   useEffect(() => {
-    const interval = setInterval(() => loadAppointments({ silent: true }), 15000);
+    const interval = setInterval(() => loadAppointments({ silent: true }), 5000);
     return () => clearInterval(interval);
   }, [loadAppointments]);
 
