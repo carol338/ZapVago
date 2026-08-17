@@ -6,7 +6,7 @@
  * (WhatsApp, push do navegador, ou ambos — "both" é o padrão).
  */
 import { prisma } from "@/lib/prisma";
-import { sendWhatsAppMessage } from "@/lib/whatsapp";
+import { sendWhatsAppMessage, type SendResult } from "@/lib/whatsapp";
 import { sendPushToBusiness } from "@/lib/push";
 
 export type NotifyEvent =
@@ -31,19 +31,26 @@ const EVENT_TITLES: Record<NotifyEvent, string> = {
 };
 
 /** Notifica o dono de um negócio sobre um evento, no(s) canal(is) configurado(s). */
-export async function notifyOwner(businessId: string, event: NotifyEvent, message: string, pushUrl?: string) {
+export async function notifyOwner(
+  businessId: string,
+  event: NotifyEvent,
+  message: string,
+  pushUrl?: string
+): Promise<{ whatsapp: SendResult | null }> {
   const owner = await prisma.owner.findUnique({ where: { businessId } });
-  if (!owner) return;
+  if (!owner) return { whatsapp: null };
 
   const notifyOn = (owner.notifyOn as any) || {};
-  if (notifyOn[event] === false) return; // todos os toggles são "ligados" por padrão, a menos que desativados
+  if (notifyOn[event] === false) return { whatsapp: null }; // todos os toggles são "ligados" por padrão, a menos que desativados
 
   const channel: "whatsapp" | "push" | "both" = notifyOn.channel || "both";
 
+  let whatsapp: SendResult | null = null;
   if (channel !== "push") {
-    await sendWhatsAppMessage(owner.phone, message);
+    whatsapp = await sendWhatsAppMessage(owner.phone, message);
   }
   if (channel !== "whatsapp") {
     await sendPushToBusiness(businessId, { title: EVENT_TITLES[event], body: message, url: pushUrl ?? "/dashboard" });
   }
+  return { whatsapp };
 }

@@ -16,8 +16,8 @@ export async function POST() {
   if (!owner) return NextResponse.json({ error: "Dono não encontrado." }, { status: 404 });
 
   const message = await buildMonthlyReportMessage(businessId);
-  await notifyOwner(businessId, "monthlyReport", message);
+  const { whatsapp } = await notifyOwner(businessId, "monthlyReport", message);
   await prisma.owner.update({ where: { id: owner.id }, data: { lastMonthlyReportAt: new Date() } });
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, message, whatsapp });
 }
