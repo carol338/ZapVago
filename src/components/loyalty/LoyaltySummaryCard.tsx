@@ -23,7 +23,7 @@ export function LoyaltySummaryCard() {
         <h3 className="font-semibold">Fidelidade</h3>
       </div>
       <div className="mb-3 space-y-0.5 text-sm text-foreground/70">
-        <p>Clientes elegíveis: <span className="font-semibold text-foreground">{summary.eligibleClients}</span></p>
+        <p><span className="font-semibold text-foreground">{summary.eligibleClients}</span> {summary.eligibleClients === 1 ? "cliente elegível" : "clientes elegíveis"} para prêmio</p>
         <p>Prêmios concedidos este mês: <span className="font-semibold text-foreground">{summary.rewardsThisMonth}</span></p>
       </div>
       <Link href="/dashboard/loyalty">
