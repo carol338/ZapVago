@@ -61,6 +61,33 @@ textarea {
   animation: fade-in 200ms ease;
 }
 
+/* Landing page — hero: elementos flutuantes e badge pulsante */
+@keyframes hero-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+.hero-float {
+  animation: hero-float 3s ease-in-out infinite;
+}
+
+@keyframes hero-badge-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+.hero-badge-pulse {
+  animation: hero-badge-pulse 2s ease-in-out infinite;
+}
+
 @keyframes modal-backdrop-in {
   from {
     opacity: 0;
