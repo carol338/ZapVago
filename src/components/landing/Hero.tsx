@@ -14,7 +14,7 @@ const SEMANA: string[][] = [
   ["#F59E0B"],
 ];
 
-const MICROCOPY = ["Grátis por 7 dias", "Sem cartão de crédito", "Configuração em 5 minutos"];
+const MICROCOPY = ["Teste grátis de 14 dias", "Sem cartão", "Cancele quando quiser"];
 
 export function Hero() {
   return (
@@ -61,15 +61,17 @@ export function Hero() {
                 size="lg"
                 className="min-h-[52px] w-full whitespace-nowrap border border-surface-border px-8 text-base sm:w-auto"
               >
-                Ver demonstração de 2 min
+                Ver como funciona (2 min)
               </Button>
             </Link>
           </div>
           <div className="mt-5 flex flex-wrap items-center justify-center gap-x-5 gap-y-1.5 text-sm text-foreground/50 lg:justify-start">
-            {MICROCOPY.map((m) => (
-              <span key={m} className="flex items-center gap-1.5">
-                <Check size={14} className="text-zap-light" /> {m}
-              </span>
+            {MICROCOPY.map((m, i) => (
+              <FadeIn key={m} delay={400 + i * 120} direction="up">
+                <span className="flex items-center gap-1.5">
+                  <Check size={14} className="text-zap-light" /> {m}
+                </span>
+              </FadeIn>
             ))}
           </div>
         </FadeIn>

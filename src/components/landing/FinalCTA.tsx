@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Check } from "lucide-react";
 import { FadeIn } from "./FadeIn";
+import { RemainingSpotsLine } from "./RemainingSpotsLine";
 
 const CHECKS = ["14 dias grátis", "Sem cartão de crédito", "Cancele quando quiser"];
 
@@ -26,7 +27,7 @@ export function FinalCTA() {
             </span>
           ))}
         </div>
-        <p className="mt-4 text-sm font-medium text-orange-400">Restam 18 vagas para novos negócios</p>
+        <RemainingSpotsLine />
       </FadeIn>
     </section>
   );

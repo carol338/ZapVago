@@ -41,7 +41,11 @@ export function Differentials() {
       </FadeIn>
       <div className="mt-12 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {DIFERENCIAIS.map((d, i) => (
-          <FadeIn key={d.title} delay={(i % 3) * 80}>
+          <FadeIn
+            key={d.title}
+            delay={(i % 3) * 80}
+            direction={i % 3 === 0 ? "left" : i % 3 === 2 ? "right" : "up"}
+          >
             <Card className="h-full transition-transform duration-200 hover:scale-[1.02]">
               <span className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-zap/10 text-zap-light">
                 <d.icon size={20} />

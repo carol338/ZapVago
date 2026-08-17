@@ -28,7 +28,7 @@ export function ProblemSection() {
       </FadeIn>
       <div className="mt-12 grid grid-cols-1 gap-5 sm:grid-cols-3">
         {DORES.map((d, i) => (
-          <FadeIn key={d.title} delay={i * 100}>
+          <FadeIn key={d.title} delay={i * 100} direction={i % 2 === 0 ? "left" : "right"}>
             <Card className="h-full transition-transform duration-200 hover:scale-[1.02]">
               <d.icon className="mb-3 text-risk-high" size={26} />
               <h3 className="mb-2 font-semibold">{d.title}</h3>

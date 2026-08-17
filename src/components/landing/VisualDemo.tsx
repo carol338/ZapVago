@@ -1,6 +1,11 @@
 import { Card } from "@/components/ui/card";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, Bell, Zap } from "lucide-react";
 import { FadeIn } from "./FadeIn";
+
+// Padrão fixo (não é um QR code real, só uma ilustração do botão de Pix)
+const QR_PATTERN = [
+  1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 0, 1, 0, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1,
+];
 
 const AGENDA_ROWS = [
   { time: "09:00", name: "João", dot: "🟩" },
@@ -23,10 +28,14 @@ export function VisualDemo() {
 
       <div className="mt-12 flex flex-col items-stretch gap-4 lg:flex-row lg:items-center">
         {/* Card 1 — Agenda Inteligente */}
-        <FadeIn className="flex-1">
+        <FadeIn className="relative flex-1">
           <Card className="h-full transition-all duration-200 hover:scale-[1.02] hover:shadow-[0_0_32px_rgba(0,168,132,0.15)]">
             <h3 className="mb-3 font-semibold">Agenda Inteligente</h3>
-            <div className="rounded-lg bg-background p-3 text-xs">
+            <div
+              role="img"
+              aria-label="Dashboard do ZapVago com agenda semanal colorida"
+              className="rounded-lg bg-background p-3 text-xs"
+            >
               <p className="mb-2 text-[10px] font-semibold tracking-wide text-foreground/40">AGENDA DO DIA</p>
               <div className="mb-3 flex items-center gap-4">
                 <span className="font-semibold text-zap-light">💰 R$ 890</span>
@@ -52,6 +61,12 @@ export function VisualDemo() {
               Sua agenda organizada com previsão de faltas e faturamento em tempo real
             </p>
           </Card>
+          <div
+            className="hero-float absolute -right-3 -top-3 hidden items-center gap-1.5 rounded-lg border border-surface-border bg-surface px-2.5 py-1.5 text-xs font-medium shadow-xl sm:flex"
+            style={{ animationDelay: "0.4s" }}
+          >
+            <Bell size={12} className="text-zap-light" /> Novo agendamento
+          </div>
         </FadeIn>
 
         <ChevronRight size={22} className="mx-auto hidden shrink-0 text-foreground/20 lg:block" />
@@ -60,7 +75,11 @@ export function VisualDemo() {
         <FadeIn delay={100} className="flex-1">
           <Card className="h-full transition-all duration-200 hover:scale-[1.02] hover:shadow-[0_0_32px_rgba(0,168,132,0.15)]">
             <h3 className="mb-3 font-semibold">Conversa no WhatsApp</h3>
-            <div className="rounded-lg bg-background p-3">
+            <div
+              role="img"
+              aria-label="Conversa no WhatsApp com assistente do ZapVago agendando automaticamente"
+              className="rounded-lg bg-background p-3"
+            >
               <p className="mb-2 text-[10px] font-semibold tracking-wide text-foreground/40">WHATSAPP</p>
               <div className="space-y-1.5 text-xs">
                 <div className="max-w-[80%] rounded-xl rounded-tl-sm bg-surface px-2.5 py-1.5 text-foreground/80">
@@ -89,7 +108,14 @@ export function VisualDemo() {
         <FadeIn delay={200} className="flex-1">
           <Card className="h-full transition-all duration-200 hover:scale-[1.02] hover:shadow-[0_0_32px_rgba(0,168,132,0.15)]">
             <h3 className="mb-3 font-semibold">Página de Agendamento</h3>
-            <div className="rounded-lg bg-background p-3 text-xs">
+            <div
+              role="img"
+              aria-label="Página pública de agendamento com seletor de horários e pagamento via Pix"
+              className="relative rounded-lg bg-background p-3 text-xs"
+            >
+              <span className="absolute -right-1 -top-1 flex items-center gap-1 rounded-full bg-orange-500 px-2 py-0.5 text-[10px] font-bold text-white">
+                <Zap size={10} className="fill-white" /> FEIRÃO -20%
+              </span>
               <div className="mb-2 flex items-center justify-between">
                 <p className="text-[10px] font-semibold tracking-wide text-foreground/40">BEAUTY STUDIO</p>
                 <span className="text-foreground/60">⭐ 4.9</span>
@@ -111,7 +137,17 @@ export function VisualDemo() {
                   </span>
                 ))}
               </div>
-              <p className="mb-2 text-foreground/60">💳 Pix (5% off)</p>
+              <div className="mb-3 flex items-center gap-2 rounded-lg bg-surface p-2">
+                <div className="grid shrink-0 grid-cols-5 gap-[1.5px] rounded bg-white p-1">
+                  {QR_PATTERN.map((on, i) => (
+                    <span key={i} className={`h-[3px] w-[3px] ${on ? "bg-black" : "bg-white"}`} />
+                  ))}
+                </div>
+                <div>
+                  <p className="font-medium text-foreground">💳 Pagar com Pix</p>
+                  <p className="text-foreground/50">5% de desconto</p>
+                </div>
+              </div>
               <div className="flex h-9 w-full items-center justify-center rounded-lg bg-zap text-xs font-semibold text-white">
                 CONFIRMAR
               </div>

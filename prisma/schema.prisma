@@ -380,3 +380,13 @@ model SilentRule {
   active      Boolean  @default(true)
   createdAt   DateTime @default(now())
 }
+
+// Contador de vagas da oferta de lançamento (14 dias grátis) exibido na landing page.
+// Uma linha única controla o estado — incrementado a cada novo cadastro em /api/auth/register.
+model LaunchOffer {
+  id          String   @id @default(cuid())
+  totalSpots  Int      @default(50)
+  filledSpots Int      @default(0)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+}
