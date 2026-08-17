@@ -2,6 +2,10 @@
 import { NextResponse } from "next/server";
 import { getOrCreateLaunchOffer } from "@/lib/launch-offer";
 
+// Sem isso, o Next.js otimiza essa rota como estática no build (não usa
+// nenhuma API dinâmica) e serve a mesma resposta congelada pra sempre.
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   const offer = await getOrCreateLaunchOffer();
   const remaining = Math.max(0, offer.totalSpots - offer.filledSpots);
