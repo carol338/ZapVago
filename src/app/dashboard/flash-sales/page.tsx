@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { FlashSaleModal } from "@/components/flash-sales/FlashSaleModal";
-import { Zap, Send, Calendar, TrendingUp, DollarSign } from "lucide-react";
+import { Zap, Send, Calendar, TrendingUp, DollarSign, Check, Copy } from "lucide-react";
 import { Breadcrumbs } from "@/components/shared/Breadcrumbs";
 import { formatCurrency } from "@/lib/utils";
 
@@ -14,6 +14,13 @@ export default function FlashSalesPage() {
   const [services, setServices] = useState<any[]>([]);
   const [professionals, setProfessionals] = useState<any[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  async function copyLink(id: string, link: string) {
+    await navigator.clipboard.writeText(link);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId((cur) => (cur === id ? null : cur)), 2000);
+  }
 
   function load() {
     fetch("/api/flash-sales").then((r) => r.json()).then(setFlashSales);
@@ -45,9 +52,16 @@ export default function FlashSalesPage() {
               <span className="flex items-center gap-1"><Send size={14} className="text-foreground/40" /> {f.sentCount} enviados</span>
               <span className="flex items-center gap-1"><Calendar size={14} className="text-foreground/40" /> {f.bookedCount} agendados</span>
             </div>
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+            <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
               <span className="flex items-center gap-1"><TrendingUp size={14} className="text-foreground/40" /> {f.conversionRate}% conversão</span>
               <span className="flex items-center gap-1 text-zap-light"><DollarSign size={14} /> {formatCurrency(f.revenue)}</span>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 border-t border-surface-border pt-3">
+              <code className="min-w-0 flex-1 truncate rounded-lg bg-background px-2 py-1.5 text-[11px] text-foreground/70">{f.link}</code>
+              <Button size="sm" variant="secondary" onClick={() => copyLink(f.id, f.link)}>
+                {copiedId === f.id ? <Check size={14} className="mr-1" /> : <Copy size={14} className="mr-1" />}
+                {copiedId === f.id ? "Copiado!" : "Copiar"}
+              </Button>
             </div>
           </Card>
         ))}

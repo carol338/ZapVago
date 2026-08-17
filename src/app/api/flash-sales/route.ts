@@ -7,6 +7,9 @@ export async function GET() {
   const businessId = await requireBusinessId();
   if (businessId instanceof NextResponse) return businessId;
 
+  const business = await prisma.business.findUnique({ where: { id: businessId } });
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+
   const flashSales = await prisma.flashSale.findMany({ where: { businessId }, orderBy: { createdAt: "desc" } });
 
   // Métricas: taxa de conversão (agendados/enviados) e receita gerada pelos
@@ -19,7 +22,8 @@ export async function GET() {
       });
       const revenue = appointments.reduce((sum, a) => sum + (a.price ?? 0), 0);
       const conversionRate = f.sentCount > 0 ? Math.round((f.bookedCount / f.sentCount) * 100) : 0;
-      return { ...f, revenue, conversionRate };
+      const link = `${appUrl}/${business?.slug}/agendar?flashSale=${f.id}`;
+      return { ...f, revenue, conversionRate, link };
     })
   );
 

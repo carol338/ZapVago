@@ -31,5 +31,5 @@ export async function POST(_req: NextRequest, { params }: { params: { id: string
 
   await prisma.flashSale.update({ where: { id: params.id }, data: { sentCount: { increment: sent } } });
 
-  return NextResponse.json({ ok: true, sent });
+  return NextResponse.json({ ok: true, sent, link });
 }

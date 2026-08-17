@@ -10,6 +10,7 @@ import { Modal } from "@/components/ui/modal";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Check, Copy } from "lucide-react";
 import { addDays, addYears } from "date-fns";
 import { parseLocalDate } from "@/lib/utils";
 
@@ -60,7 +61,15 @@ export function FlashSaleModal({
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
-  const [result, setResult] = useState<{ sent: number } | null>(null);
+  const [result, setResult] = useState<{ sent: number; link: string } | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  async function copyLink() {
+    if (!result) return;
+    await navigator.clipboard.writeText(result.link);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
 
   function toggle(list: string[], setList: (v: string[]) => void, id: string) {
     setList(list.includes(id) ? list.filter((i) => i !== id) : [...list, id]);
@@ -132,7 +141,7 @@ export function FlashSaleModal({
     const flashSale = await createRes.json();
     const activateRes = await fetch(`/api/flash-sales/${flashSale.id}/activate`, { method: "POST" });
     const activateData = await activateRes.json();
-    setResult({ sent: activateData.sent ?? 0 });
+    setResult({ sent: activateData.sent ?? 0, link: activateData.link ?? "" });
     setLoading(false);
   }
 
@@ -142,6 +151,16 @@ export function FlashSaleModal({
         <div className="space-y-3 text-center">
           <p className="text-lg font-semibold text-zap-light">Feirão disparado!</p>
           <p className="text-sm text-foreground/60">Mensagens enviadas para {result.sent} cliente(s).</p>
+          <div className="text-left">
+            <Label>Link do feirão</Label>
+            <div className="flex flex-wrap items-center gap-2">
+              <code className="min-w-0 flex-1 truncate rounded-lg bg-background px-3 py-2 text-xs text-foreground/70">{result.link}</code>
+              <Button size="sm" variant="secondary" onClick={copyLink}>
+                {copied ? <Check size={14} className="mr-1" /> : <Copy size={14} className="mr-1" />}
+                {copied ? "Copiado!" : "Copiar"}
+              </Button>
+            </div>
+          </div>
           <Button onClick={onClose} className="w-full">Fechar</Button>
         </div>
       ) : (
