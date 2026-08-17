@@ -6,6 +6,7 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { fillLaunchOfferSpot } from "@/lib/launch-offer";
 
 const schema = z.object({
   businessName: z.string().min(2),
@@ -63,6 +64,8 @@ export async function POST(req: NextRequest) {
       },
       include: { owner: true },
     });
+
+    await fillLaunchOfferSpot();
 
     return NextResponse.json({ businessId: business.id, slug: business.slug }, { status: 201 });
   } catch (err: any) {

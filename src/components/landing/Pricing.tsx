@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Check } from "lucide-react";
+import { Check, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FadeIn } from "./FadeIn";
 
@@ -18,7 +18,7 @@ const PLANOS = [
     preco: "R$ 147",
     destaque: true,
     features: ["Agendamentos ilimitados", "5 profissionais", "Pix + link personalizado", "Lista de espera", "Fidelidade"],
-    cta: "Testar 7 dias grátis",
+    cta: "Começar teste grátis",
     href: "/register",
   },
   {
@@ -72,6 +72,18 @@ export function Pricing() {
           </FadeIn>
         ))}
       </div>
+
+      <FadeIn delay={300} className="mt-8 flex justify-center">
+        <div className="flex max-w-md items-start gap-3 rounded-xl border border-surface-border bg-surface px-5 py-4 text-left">
+          <Lock size={20} className="mt-0.5 shrink-0 text-zap-light" />
+          <div>
+            <p className="text-sm font-semibold">Garantia ZapVago</p>
+            <p className="mt-0.5 text-sm text-foreground/60">
+              Teste por 14 dias. Se não gostar, cancele sem pagar nada. Sem perguntas.
+            </p>
+          </div>
+        </div>
+      </FadeIn>
     </section>
   );
 }
