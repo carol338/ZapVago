@@ -57,7 +57,17 @@ async function getBookingData(subdomain: string, token: string, flashSaleId?: st
     })),
     professionals: professionals.map((p) => ({ id: p.id, name: p.name, photo: p.photo, color: p.color, serviceIds: p.serviceIds })),
     flashSale: flashSale
-      ? { id: flashSale.id, name: flashSale.name, discountPercent: flashSale.discountPercent, serviceIds: flashSale.serviceIds }
+      ? {
+          id: flashSale.id,
+          name: flashSale.name,
+          discountPercent: flashSale.discountPercent,
+          serviceIds: flashSale.serviceIds,
+          startDate: flashSale.startDate.toISOString(),
+          endDate: flashSale.endDate.toISOString(),
+          daysOfWeek: flashSale.daysOfWeek,
+          timeStart: flashSale.timeStart,
+          timeEnd: flashSale.timeEnd,
+        }
       : null,
   };
 }

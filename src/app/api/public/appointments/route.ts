@@ -51,11 +51,18 @@ export async function POST(req: NextRequest) {
   let validFlashSaleId: string | undefined;
   if (flashSaleId) {
     const flashSale = await prisma.flashSale.findFirst({
-      where: { id: flashSaleId, businessId: bookingToken.businessId, active: true, endDate: { gte: new Date() } },
+      where: { id: flashSaleId, businessId: bookingToken.businessId, active: true },
     });
     if (flashSale && flashSale.serviceIds.includes(service.id)) {
-      basePrice = Math.round(service.price * (1 - flashSale.discountPercent / 100) * 100) / 100;
-      validFlashSaleId = flashSale.id;
+      const jsDay = startDate.getDay();
+      const dayOfWeek = jsDay === 0 ? 7 : jsDay;
+      const inRange = flashSale.startDate <= startDate && startDate <= flashSale.endDate;
+      const inDayOfWeek = flashSale.daysOfWeek.includes(dayOfWeek);
+      const inTimeWindow = time >= flashSale.timeStart && time < flashSale.timeEnd;
+      if (inRange && inDayOfWeek && inTimeWindow) {
+        basePrice = Math.round(service.price * (1 - flashSale.discountPercent / 100) * 100) / 100;
+        validFlashSaleId = flashSale.id;
+      }
     }
   }
 

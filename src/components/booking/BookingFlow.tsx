@@ -51,6 +51,20 @@ interface FlashSaleInfo {
   name: string;
   discountPercent: number;
   serviceIds: string[];
+  startDate: string;
+  endDate: string;
+  daysOfWeek: number[];
+  timeStart: string;
+  timeEnd: string;
+}
+
+function flashSaleAppliesOnDate(flashSale: FlashSaleInfo, date: Date) {
+  const start = new Date(flashSale.startDate);
+  const end = new Date(flashSale.endDate);
+  if (date < start || date > end) return false;
+  const jsDay = date.getDay();
+  const dayOfWeek = jsDay === 0 ? 7 : jsDay;
+  return flashSale.daysOfWeek.includes(dayOfWeek);
 }
 
 export function BookingFlow({
@@ -128,6 +142,7 @@ export function BookingFlow({
       date: format(selectedDate, "yyyy-MM-dd"),
     });
     if (professionalId) params.set("professionalId", professionalId);
+    if (flashSale?.serviceIds.includes(effectiveService.id)) params.set("flashSaleId", flashSale.id);
     fetch(`/api/public/availability?${params}`)
       .then((r) => r.json())
       .then((d) => setSlots(d.slots ?? []))
@@ -149,7 +164,8 @@ export function BookingFlow({
   const manha = slots.filter((s) => Number(s.time.split(":")[0]) < 12);
   const tarde = slots.filter((s) => Number(s.time.split(":")[0]) >= 12);
 
-  const isFlashSaleEligible = !!(effectiveService && flashSale?.serviceIds.includes(effectiveService.id));
+  const flashSaleActiveToday = !!(flashSale && flashSaleAppliesOnDate(flashSale, selectedDate));
+  const isFlashSaleEligible = !!(effectiveService && flashSaleActiveToday && flashSale?.serviceIds.includes(effectiveService.id));
   const listPrice = effectiveService?.price ?? 0;
   const price = isFlashSaleEligible ? Math.round(listPrice * (1 - flashSale!.discountPercent / 100) * 100) / 100 : listPrice;
   const pixPrice = Math.round(price * 0.95 * 100) / 100;
@@ -352,7 +368,7 @@ export function BookingFlow({
         )}
         <p className="font-semibold">{business.name}</p>
         <p className="mt-1 text-sm text-white/60">Olá, {client.name.split(" ")[0]}! 👋</p>
-        {flashSale && (
+        {flashSale && flashSaleActiveToday && (
           <div className="mx-auto mt-3 inline-flex items-center gap-1.5 rounded-full bg-orange-500/15 px-3 py-1 text-xs font-semibold text-orange-400">
             🔥 {flashSale.name} — {flashSale.discountPercent}% OFF
           </div>
@@ -367,7 +383,7 @@ export function BookingFlow({
             {services
               .filter((s) => s.comboOf.length === 0) // combos aparecem como opção dentro do serviço base
               .map((s) => {
-                const eligible = !!flashSale?.serviceIds.includes(s.id);
+                const eligible = flashSaleActiveToday && !!flashSale?.serviceIds.includes(s.id);
                 const discounted = eligible ? Math.round(s.price * (1 - flashSale!.discountPercent / 100) * 100) / 100 : s.price;
                 return (
                   <button
