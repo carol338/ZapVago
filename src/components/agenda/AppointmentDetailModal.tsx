@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -46,13 +46,29 @@ export function AppointmentDetailModal({
 }) {
   const [loading, setLoading] = useState<string | null>(null);
   const [confirmationSent, setConfirmationSent] = useState(false);
+  const [confirmingCancel, setConfirmingCancel] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setConfirmingCancel(false);
+    setActionError(null);
+    setConfirmationSent(false);
+  }, [appointment?.id]);
+
   if (!appointment) return null;
 
   async function act(action: "confirm" | "no-show" | "complete" | "cancel") {
     setLoading(action);
+    setActionError(null);
     const url = action === "cancel" ? `/api/appointments/${appointment!.id}` : `/api/appointments/${appointment!.id}/${action}`;
-    await fetch(url, { method: action === "cancel" ? "DELETE" : "PUT" });
+    const res = await fetch(url, { method: action === "cancel" ? "DELETE" : "PUT" });
     setLoading(null);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setActionError(data.error ?? "Não foi possível concluir a ação. Tenta de novo.");
+      return;
+    }
+    setConfirmingCancel(false);
     onChanged();
     onClose();
   }
@@ -112,12 +128,34 @@ export function AppointmentDetailModal({
           </div>
         )}
 
-        <div className="flex flex-wrap gap-2 pt-2">
-          <Button size="sm" onClick={() => act("confirm")} disabled={!!loading}>Confirmar</Button>
-          <Button size="sm" variant="secondary" onClick={() => act("complete")} disabled={!!loading}>Concluir</Button>
-          <Button size="sm" variant="secondary" onClick={() => act("no-show")} disabled={!!loading}>Marcar falta</Button>
-          <Button size="sm" variant="danger" onClick={() => act("cancel")} disabled={!!loading}>Cancelar</Button>
-        </div>
+        {actionError && (
+          <div className="rounded-lg border border-risk-high/30 bg-risk-high/10 p-3 text-sm text-risk-high">
+            {actionError}
+          </div>
+        )}
+
+        {confirmingCancel ? (
+          <div className="space-y-2 rounded-lg border border-risk-high/30 bg-risk-high/10 p-3">
+            <p className="text-sm text-risk-high">Tem certeza que deseja cancelar este agendamento?</p>
+            <div className="flex gap-2">
+              <Button size="sm" variant="danger" onClick={() => act("cancel")} disabled={!!loading}>
+                {loading === "cancel" ? "Cancelando..." : "Sim, cancelar"}
+              </Button>
+              <Button size="sm" variant="secondary" onClick={() => setConfirmingCancel(false)} disabled={!!loading}>
+                Voltar
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-wrap gap-2 pt-2">
+            <Button size="sm" onClick={() => act("confirm")} disabled={!!loading}>Confirmar</Button>
+            <Button size="sm" variant="secondary" onClick={() => act("complete")} disabled={!!loading}>Concluir</Button>
+            <Button size="sm" variant="secondary" onClick={() => act("no-show")} disabled={!!loading}>Marcar falta</Button>
+            <Button size="sm" variant="danger" onClick={() => { setActionError(null); setConfirmingCancel(true); }} disabled={!!loading}>
+              Cancelar
+            </Button>
+          </div>
+        )}
       </div>
     </Modal>
   );
