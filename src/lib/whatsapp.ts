@@ -10,18 +10,24 @@ const WHATSAPP_API_TOKEN = process.env.WHATSAPP_API_TOKEN;
 const WHATSAPP_PHONE_NUMBER_ID = process.env.WHATSAPP_PHONE_NUMBER_ID;
 const GRAPH_API_BASE = "https://graph.facebook.com/v20.0";
 
-interface SendResult {
+export interface SendResult {
   success: boolean;
   mocked: boolean;
+  /** Por que foi mockado: MOCK_MODE ligado de propósito, ou WhatsApp nunca configurado. */
+  reason?: "mock_mode" | "not_configured";
   messageId?: string;
   error?: string;
 }
 
 /** Envia uma mensagem de texto simples para um número de WhatsApp. */
 export async function sendWhatsAppMessage(to: string, text: string): Promise<SendResult> {
-  if (isMockMode() || !WHATSAPP_API_TOKEN || !WHATSAPP_PHONE_NUMBER_ID) {
+  if (isMockMode()) {
     console.log(`[whatsapp.ts MOCK] Enviando para ${to}: "${text}"`);
-    return { success: true, mocked: true, messageId: `mock_${Date.now()}` };
+    return { success: true, mocked: true, reason: "mock_mode", messageId: `mock_${Date.now()}` };
+  }
+  if (!WHATSAPP_API_TOKEN || !WHATSAPP_PHONE_NUMBER_ID) {
+    console.log(`[whatsapp.ts MOCK] Enviando para ${to}: "${text}"`);
+    return { success: true, mocked: true, reason: "not_configured", messageId: `mock_${Date.now()}` };
   }
 
   try {
