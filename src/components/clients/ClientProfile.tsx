@@ -53,17 +53,48 @@ export function ClientProfile({ clientId }: { clientId: string }) {
   const [sendingReturn, setSendingReturn] = useState(false);
   const [returnSent, setReturnSent] = useState(false);
   const [loyaltyRules, setLoyaltyRules] = useState<any[]>([]);
+  const [services, setServices] = useState<any[]>([]);
+  const [rewardUrl, setRewardUrl] = useState<string | null>(null);
+  const [generatingReward, setGeneratingReward] = useState(false);
+  const [copiedReward, setCopiedReward] = useState(false);
 
   useEffect(() => {
     fetch(`/api/clients/${clientId}`).then((r) => r.json()).then(setClient);
     fetch(`/api/clients/${clientId}/prontuario`).then((r) => r.json()).then(setProntuario);
     fetch(`/api/clients/${clientId}/notes`).then((r) => r.json()).then(setNotes);
     fetch(`/api/loyalty/rules`).then((r) => r.json()).then(setLoyaltyRules);
+    fetch(`/api/services`).then((r) => r.json()).then(setServices);
   }, [clientId]);
 
+  const activeRules = loyaltyRules.filter((r) => r.active);
   const eligibleReward = client
-    ? loyaltyRules.filter((r) => r.active && client.loyaltyPoints >= r.visitsRequired).sort((a, b) => b.visitsRequired - a.visitsRequired)[0]
+    ? activeRules.filter((r) => client.loyaltyPoints >= r.visitsRequired).sort((a, b) => b.visitsRequired - a.visitsRequired)[0]
     : null;
+  const nextRule = client
+    ? activeRules.filter((r) => client.loyaltyPoints < r.visitsRequired).sort((a, b) => a.visitsRequired - b.visitsRequired)[0]
+    : null;
+  const loyaltyRule = eligibleReward ?? nextRule;
+  const rewardServiceName = loyaltyRule ? services.find((s) => s.id === loyaltyRule.rewardServiceId)?.name ?? "serviço" : null;
+
+  async function generateRewardLink() {
+    if (!eligibleReward) return;
+    setGeneratingReward(true);
+    const res = await fetch("/api/booking-tokens", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ clientId, serviceId: eligibleReward.rewardServiceId }),
+    });
+    const data = await res.json();
+    setRewardUrl(data.url);
+    setGeneratingReward(false);
+  }
+
+  async function copyRewardLink() {
+    if (!rewardUrl) return;
+    await navigator.clipboard.writeText(rewardUrl);
+    setCopiedReward(true);
+    setTimeout(() => setCopiedReward(false), 2000);
+  }
 
   async function generateBookingLink() {
     setGenerating(true);
@@ -123,6 +154,11 @@ export function ClientProfile({ clientId }: { clientId: string }) {
             <p className="flex items-center gap-1.5 text-sm text-foreground/60"><Phone size={14} /> {client.phone}</p>
             <div className="mt-2 flex flex-wrap gap-1">
               {client.tags.map((t: string) => <Badge key={t} variant={TAG_VARIANT[t] ?? "default"}>{t}</Badge>)}
+              {eligibleReward && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-amber-400/15 px-2.5 py-0.5 text-xs font-medium text-amber-400">
+                  <Star size={12} className="fill-amber-400" /> Elegível para prêmio
+                </span>
+              )}
             </div>
           </div>
           <div className="grid grid-cols-3 gap-4 text-center">
@@ -140,13 +176,6 @@ export function ClientProfile({ clientId }: { clientId: string }) {
             </div>
           </div>
         </div>
-
-        {eligibleReward && (
-          <div className="mt-3 flex items-center gap-2 rounded-lg border border-zap/30 bg-zap/10 p-3 text-sm text-zap-light">
-            <Gift size={16} className="shrink-0" />
-            Elegível para prêmio — {eligibleReward.rewardDiscount === 100 ? "serviço grátis" : `${eligibleReward.rewardDiscount}% off`} no próximo agendamento.
-          </div>
-        )}
 
         <div className="mt-4 border-t border-surface-border pt-4">
           {bookingUrl ? (
@@ -166,6 +195,44 @@ export function ClientProfile({ clientId }: { clientId: string }) {
           <p className="mt-1.5 text-xs text-foreground/40">Link pessoal, válido por 24h, com agendamento e pagamento.</p>
         </div>
       </Card>
+
+      {loyaltyRule && (
+        <Card className={eligibleReward ? "border-amber-400/40 bg-amber-400/[0.06]" : undefined}>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-1.5"><Gift size={15} /> Fidelidade</CardTitle>
+          </CardHeader>
+          <div className="space-y-1.5 text-sm">
+            <p className="text-foreground/70">
+              Regra: A cada {loyaltyRule.visitsRequired} visitas, {loyaltyRule.rewardDiscount === 100 ? "1" : `${loyaltyRule.rewardDiscount}% off em`} {rewardServiceName} {loyaltyRule.rewardDiscount === 100 ? "grátis" : ""}
+            </p>
+            <p className="text-foreground/70">
+              Pontos: <span className="font-semibold text-foreground">{client.loyaltyPoints}/{loyaltyRule.visitsRequired}</span>
+            </p>
+            <p className={eligibleReward ? "font-semibold text-amber-400" : "text-foreground/70"}>
+              Status: {eligibleReward ? "✅ Elegível para prêmio!" : `Faltam ${loyaltyRule.visitsRequired - client.loyaltyPoints} visita(s)`}
+            </p>
+          </div>
+
+          {eligibleReward && (
+            <div className="mt-3 border-t border-amber-400/20 pt-3">
+              {rewardUrl ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  <code className="min-w-0 flex-1 truncate rounded-lg bg-background px-3 py-2 text-xs text-foreground/70">{rewardUrl}</code>
+                  <Button size="sm" variant="secondary" onClick={copyRewardLink}>
+                    {copiedReward ? <Check size={14} className="mr-1" /> : <Copy size={14} className="mr-1" />}
+                    {copiedReward ? "Copiado!" : "Copiar"}
+                  </Button>
+                </div>
+              ) : (
+                <Button size="sm" className="bg-amber-400 text-amber-950 hover:brightness-90" onClick={generateRewardLink} disabled={generatingReward}>
+                  <Gift size={14} className="mr-1" />
+                  {generatingReward ? "Gerando..." : "USAR PRÊMIO AGORA"}
+                </Button>
+              )}
+            </div>
+          )}
+        </Card>
+      )}
 
       {client.alergias?.length > 0 && (
         <div className="flex items-center gap-2 rounded-lg border border-risk-mid/30 bg-risk-mid/10 p-3 text-sm text-risk-mid">
