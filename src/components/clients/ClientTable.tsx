@@ -7,7 +7,7 @@ import { Select } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency } from "@/lib/utils";
 import { format } from "date-fns";
-import { Search } from "lucide-react";
+import { Search, Gift } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const TAG_VARIANT: Record<string, "default" | "success" | "warning" | "danger" | "info"> = {
@@ -23,6 +23,7 @@ export function ClientTable() {
   const [search, setSearch] = useState("");
   const [tag, setTag] = useState("");
   const [sort, setSort] = useState("name");
+  const [eligibleOnly, setEligibleOnly] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -30,6 +31,7 @@ export function ClientTable() {
     const params = new URLSearchParams({ sort });
     if (search) params.set("search", search);
     if (tag) params.set("tag", tag);
+    if (eligibleOnly) params.set("eligible", "1");
     const t = setTimeout(() => {
       fetch(`/api/clients?${params}`)
         .then((r) => r.json())
@@ -39,7 +41,7 @@ export function ClientTable() {
         });
     }, 300);
     return () => clearTimeout(t);
-  }, [search, tag, sort]);
+  }, [search, tag, sort, eligibleOnly]);
 
   return (
     <div>
@@ -63,6 +65,15 @@ export function ClientTable() {
             <option value="lastVisit">Ordenar: Última visita</option>
           </Select>
         </div>
+        <button
+          type="button"
+          onClick={() => setEligibleOnly((v) => !v)}
+          className={`flex min-h-[44px] items-center justify-center gap-1.5 whitespace-nowrap rounded-lg border px-3 text-sm font-medium transition-colors ${
+            eligibleOnly ? "border-amber-400/40 bg-amber-400/15 text-amber-400" : "border-surface-border bg-surface text-foreground/70 hover:bg-surface-hover"
+          }`}
+        >
+          <Gift size={14} /> Só elegíveis
+        </button>
       </div>
 
       <div className="overflow-x-auto rounded-xl border border-surface-border bg-surface">
@@ -76,13 +87,14 @@ export function ClientTable() {
               <th className="p-3">Gasto total</th>
               <th className="p-3">Última visita</th>
               <th className="p-3">Risco de falta</th>
+              <th className="p-3">Fidelidade</th>
             </tr>
           </thead>
           <tbody>
             {loading &&
               Array.from({ length: 5 }).map((_, i) => (
                 <tr key={`sk-${i}`} className="border-b border-surface-border last:border-0">
-                  {Array.from({ length: 7 }).map((_, j) => (
+                  {Array.from({ length: 8 }).map((_, j) => (
                     <td key={j} className="p-3">
                       <Skeleton className="h-4 w-full max-w-[100px]" />
                     </td>
@@ -112,6 +124,15 @@ export function ClientTable() {
                     <Badge variant="danger">{Math.round(c.predictedNoShowRisk * 100)}%</Badge>
                   ) : (
                     <span className="text-foreground/40">{Math.round(c.predictedNoShowRisk * 100)}%</span>
+                  )}
+                </td>
+                <td className="p-3">
+                  {c.eligibleForReward ? (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-400/15 px-2 py-0.5 text-xs font-medium text-amber-400">
+                      <Gift size={12} /> Elegível
+                    </span>
+                  ) : (
+                    <span className="text-foreground/40">{c.loyaltyPoints} pts</span>
                   )}
                 </td>
               </tr>

@@ -12,12 +12,17 @@ export async function GET(req: NextRequest) {
   const search = searchParams.get("search");
   const tag = searchParams.get("tag");
   const sort = searchParams.get("sort") ?? "name";
+  const eligibleOnly = searchParams.get("eligible") === "1";
+
+  const rules = await prisma.loyaltyRule.findMany({ where: { businessId, active: true } });
+  const minVisitsRequired = rules.length > 0 ? Math.min(...rules.map((r) => r.visitsRequired)) : null;
 
   const clients = await prisma.client.findMany({
     where: {
       businessId,
       ...(search ? { OR: [{ name: { contains: search, mode: "insensitive" } }, { phone: { contains: search } }] } : {}),
       ...(tag ? { tags: { has: tag } } : {}),
+      ...(eligibleOnly && minVisitsRequired !== null ? { loyaltyPoints: { gte: minVisitsRequired } } : {}),
     },
     orderBy:
       sort === "totalSpent"
@@ -31,6 +36,7 @@ export async function GET(req: NextRequest) {
   const withRisk = clients.map((c) => ({
     ...c,
     predictedNoShowRisk: calculateNoShowRisk({ client: c, clientConfirmed: true }),
+    eligibleForReward: rules.some((r) => c.loyaltyPoints >= r.visitsRequired),
   }));
   return NextResponse.json(withRisk);
 }
