@@ -14,7 +14,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
-import { CheckCircle2, Circle, Loader2, QrCode, Plus, Trash2 } from "lucide-react";
+import { CheckCircle2, Circle, Loader2, Plus, Trash2, AlertTriangle } from "lucide-react";
 
 const DIAS = [
   { key: "mon", label: "Segunda" },
@@ -62,7 +62,10 @@ export function OnboardingWizard({ category }: { category: string }) {
   const [step, setStep] = useState(1);
 
   // Etapa 2 — WhatsApp
+  const [phoneNumberId, setPhoneNumberId] = useState("");
+  const [accessToken, setAccessToken] = useState("");
   const [whatsappStatus, setWhatsappStatus] = useState<"idle" | "connecting" | "connected">("idle");
+  const [whatsappError, setWhatsappError] = useState<string | null>(null);
 
   // Etapa 3 — Configurações
   const [workingHours, setWorkingHours] = useState<Record<string, { start: string; end: string } | null>>(
@@ -78,9 +81,31 @@ export function OnboardingWizard({ category }: { category: string }) {
   const [services, setServices] = useState(TEMPLATES_SERVICOS[category] ?? []);
   const [professionals, setProfessionals] = useState<{ name: string; color: string }[]>([{ name: "", color: "#10B981" }]);
 
-  function connectWhatsApp() {
+  async function connectWhatsApp() {
+    setWhatsappError(null);
+    if (!phoneNumberId.trim() || !accessToken.trim()) {
+      setWhatsappError("Preencha o Phone Number ID e o token de acesso.");
+      return;
+    }
+
     setWhatsappStatus("connecting");
-    setTimeout(() => setWhatsappStatus("connected"), 2500); // simulação do handshake do provedor
+    try {
+      const res = await fetch("/api/business/whatsapp-config", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phoneNumberId: phoneNumberId.trim(), accessToken: accessToken.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setWhatsappError(data.error ?? "Não foi possível conectar. Confira os dados e tente novamente.");
+        setWhatsappStatus("idle");
+        return;
+      }
+      setWhatsappStatus("connected");
+    } catch {
+      setWhatsappError("Erro de rede ao tentar conectar. Tente novamente.");
+      setWhatsappStatus("idle");
+    }
   }
 
   async function finishOnboarding() {
@@ -157,30 +182,67 @@ export function OnboardingWizard({ category }: { category: string }) {
       {step === 2 && (
         <Card>
           <h2 className="mb-2 text-xl font-bold">Conectar WhatsApp</h2>
-          <p className="mb-6 text-sm text-foreground/60">
-            1. Abra o WhatsApp no celular do negócio → 2. Toque em Aparelhos Conectados → 3. Aponte a câmera para o QR Code abaixo.
-          </p>
-          <div className="mb-6 flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-surface-border bg-background p-8">
-            {whatsappStatus === "connected" ? (
-              <>
-                <CheckCircle2 className="text-zap" size={48} />
-                <p className="font-medium text-zap-light">✅ Conectado!</p>
-              </>
-            ) : whatsappStatus === "connecting" ? (
-              <>
-                <Loader2 className="animate-spin text-zap" size={48} />
-                <p className="text-sm text-foreground/60">Conectando...</p>
-              </>
-            ) : (
-              <>
-                <QrCode size={96} className="text-foreground/40" />
-                <p className="text-sm text-foreground/60">Aguardando leitura do QR Code</p>
-              </>
-            )}
-          </div>
+
+          {whatsappStatus === "connected" ? (
+            <div className="mb-6 flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-surface-border bg-background p-8">
+              <CheckCircle2 className="text-zap" size={48} />
+              <p className="font-medium text-zap-light">✅ Conectado! Mandamos uma mensagem de teste pro seu WhatsApp.</p>
+            </div>
+          ) : (
+            <>
+              <div className="mb-4 rounded-xl border border-surface-border bg-background p-4 text-sm text-foreground/70">
+                <p className="mb-2 font-medium text-foreground">Como conectar:</p>
+                <ol className="list-decimal space-y-1 pl-4">
+                  <li>
+                    Acesse{" "}
+                    <a href="https://business.facebook.com" target="_blank" rel="noreferrer" className="text-zap-light hover:underline">
+                      business.facebook.com
+                    </a>
+                  </li>
+                  <li>Crie ou selecione seu WhatsApp Business</li>
+                  <li>Vá em Configurações &gt; Números de telefone</li>
+                  <li>Copie o Phone Number ID e gere um token de acesso permanente</li>
+                </ol>
+              </div>
+
+              <div className="mb-4">
+                <Label>Phone Number ID</Label>
+                <Input
+                  value={phoneNumberId}
+                  onChange={(e) => setPhoneNumberId(e.target.value)}
+                  placeholder="123456789012345"
+                  disabled={whatsappStatus === "connecting"}
+                />
+              </div>
+              <div className="mb-4">
+                <Label>Token de acesso permanente</Label>
+                <Input
+                  type="password"
+                  value={accessToken}
+                  onChange={(e) => setAccessToken(e.target.value)}
+                  placeholder="EAAG..."
+                  disabled={whatsappStatus === "connecting"}
+                />
+              </div>
+
+              {whatsappError && (
+                <div className="mb-4 flex items-start gap-2 rounded-lg bg-risk-high/10 p-3 text-sm text-risk-high">
+                  <AlertTriangle size={16} className="mt-0.5 shrink-0" />
+                  <span>{whatsappError}</span>
+                </div>
+              )}
+            </>
+          )}
+
           {whatsappStatus !== "connected" ? (
             <Button onClick={connectWhatsApp} disabled={whatsappStatus === "connecting"} className="w-full">
-              {whatsappStatus === "connecting" ? "Conectando..." : "Gerar QR Code (simulado)"}
+              {whatsappStatus === "connecting" ? (
+                <span className="flex items-center justify-center gap-2">
+                  <Loader2 className="animate-spin" size={16} /> Conectando...
+                </span>
+              ) : (
+                "Conectar"
+              )}
             </Button>
           ) : (
             <Button onClick={() => setStep(3)} className="w-full">Continuar</Button>

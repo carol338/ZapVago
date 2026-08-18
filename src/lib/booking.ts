@@ -40,6 +40,7 @@ export async function confirmAppointmentPayment(appointmentId: string, paymentId
 }
 
 export async function notifyClientConfirmed(appointment: {
+  businessId: string;
   client: { name: string; phone: string };
   service: { name: string };
   professional: { name: string };
@@ -56,5 +57,5 @@ Pagamento: ${pagamento}
 
 Te mando lembrete 1h antes. Até!`;
 
-  await sendWhatsAppMessage(appointment.client.phone, msg);
+  await sendWhatsAppMessage(appointment.client.phone, msg, appointment.businessId);
 }

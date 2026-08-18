@@ -15,6 +15,6 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   const messages = [...((conversation.messages as any[]) ?? []), { role: "owner", content, timestamp: new Date().toISOString() }];
   await prisma.conversation.update({ where: { id: params.id }, data: { messages, status: "HUMAN_HANDLING" } });
 
-  await sendWhatsAppMessage(conversation.clientPhone, content);
+  await sendWhatsAppMessage(conversation.clientPhone, content, businessId);
   return NextResponse.json({ ok: true });
 }

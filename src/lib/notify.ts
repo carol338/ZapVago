@@ -47,7 +47,7 @@ export async function notifyOwner(
 
   let whatsapp: SendResult | null = null;
   if (channel !== "push") {
-    whatsapp = await sendWhatsAppMessage(owner.phone, message);
+    whatsapp = await sendWhatsAppMessage(owner.phone, message, businessId);
   }
   if (channel !== "whatsapp") {
     await sendPushToBusiness(businessId, { title: EVENT_TITLES[event], body: message, url: pushUrl ?? "/dashboard" });

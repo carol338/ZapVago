@@ -25,7 +25,7 @@ export async function POST(_req: NextRequest, { params }: { params: { id: string
     const msg =
       (flashSale.message || `🔥 ${flashSale.name}! ${flashSale.discountPercent}% OFF hoje. Bora garantir seu horário?`) +
       `\n\n👉 ${link}`;
-    const result = await sendWhatsAppMessage(c.phone, msg);
+    const result = await sendWhatsAppMessage(c.phone, msg, businessId);
     if (result.success) sent += 1;
   }
 

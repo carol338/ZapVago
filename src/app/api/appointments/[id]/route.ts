@@ -76,7 +76,8 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
   const dataFormatada = format(appointment.date, "EEEE, dd/MM 'às' HH:mm", { locale: ptBR });
   await sendWhatsAppMessage(
     appointment.client.phone,
-    `Oi ${appointment.client.name.split(" ")[0]}, seu horário de ${appointment.service.name} com ${appointment.professional.name} (${dataFormatada}) foi cancelado. Qualquer coisa é só chamar aqui pra remarcar. 🙏`
+    `Oi ${appointment.client.name.split(" ")[0]}, seu horário de ${appointment.service.name} com ${appointment.professional.name} (${dataFormatada}) foi cancelado. Qualquer coisa é só chamar aqui pra remarcar. 🙏`,
+    businessId
   );
 
   return NextResponse.json({
