@@ -13,13 +13,32 @@ const OFFER_DEADLINE = format(endOfMonth(new Date()), "dd/MM");
 
 export function LaunchOfferBanner() {
   const [spots, setSpots] = useState<Spots | null>(null);
+  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     fetch("/api/launch-offer/spots")
-      .then((r) => r.json())
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error("bad response"))))
       .then(setSpots)
-      .catch(() => setSpots(null));
+      .catch(() => setFailed(true));
   }, []);
+
+  // API indisponível (ex.: migração pendente no banco de produção) — mostra um CTA genérico
+  // em vez de deixar o skeleton de carregamento pulsando pra sempre como um quadrado vazio.
+  if (failed) {
+    return (
+      <FadeIn className="mt-10">
+        <div className="mx-auto max-w-xl rounded-2xl border border-surface-border bg-surface p-6 text-center sm:p-8">
+          <p className="font-semibold">Teste grátis por 14 dias</p>
+          <p className="mt-1 text-sm text-foreground/60">Sem cartão de crédito. Cancele quando quiser.</p>
+          <Link href="/register" className="mt-5 block">
+            <Button className="min-h-[48px] w-full px-8 sm:w-auto">
+              Criar minha conta <ArrowRight size={16} className="ml-1.5" />
+            </Button>
+          </Link>
+        </div>
+      </FadeIn>
+    );
+  }
 
   if (!spots) {
     return <div className="mx-auto mt-10 h-[260px] max-w-xl animate-pulse rounded-2xl bg-surface-hover" />;
