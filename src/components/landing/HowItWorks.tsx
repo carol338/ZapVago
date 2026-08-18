@@ -34,7 +34,7 @@ export function HowItWorks() {
                 </div>
               </FadeIn>
               {i < PASSOS.length - 1 && (
-                <ChevronRight size={22} className="mx-auto hidden shrink-0 text-foreground/20 lg:block" />
+                <ChevronRight size={22} className="arrow-flow mx-auto hidden shrink-0 text-zap-light lg:block" style={{ animationDelay: `${i * 0.2}s` }} />
               )}
             </Fragment>
           ))}

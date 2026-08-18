@@ -1,4 +1,9 @@
+"use client";
+
+/** "Como resolve", com o mockup do WhatsApp simulando o fluxo em loop (mensagem → agenda → pagamento). */
+import { useEffect, useState } from "react";
 import { MessageCircle, Brain, DollarSign } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { FadeIn } from "./FadeIn";
 
 const STEPS = [
@@ -7,7 +12,19 @@ const STEPS = [
   { icon: DollarSign, title: "Pagamento confirmado" },
 ];
 
+// Cada bolha some dentro de uma etapa (0, 1 ou 2) — controla quantas aparecem por vez.
+const BUBBLES_PER_STEP = [1, 3, 4];
+
 export function SolutionSection() {
+  const [step, setStep] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => setStep((s) => (s + 1) % STEPS.length), 2400);
+    return () => clearInterval(interval);
+  }, []);
+
+  const visibleBubbles = BUBBLES_PER_STEP[step];
+
   return (
     <section className="border-y border-surface-border bg-surface/30">
       <div className="mx-auto max-w-6xl px-4 py-20">
@@ -19,8 +36,19 @@ export function SolutionSection() {
           <FadeIn>
             <div className="space-y-6">
               {STEPS.map((s, i) => (
-                <div key={s.title} className="flex items-center gap-4">
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-zap/10 text-zap-light">
+                <div
+                  key={s.title}
+                  className={cn(
+                    "flex items-center gap-4 rounded-xl p-2 transition-all duration-500",
+                    i === step ? "bg-zap/[0.06]" : "opacity-40"
+                  )}
+                >
+                  <div
+                    className={cn(
+                      "flex h-12 w-12 shrink-0 items-center justify-center rounded-full transition-colors duration-500",
+                      i === step ? "bg-zap text-white" : "bg-zap/10 text-zap-light"
+                    )}
+                  >
                     <s.icon size={22} />
                   </div>
                   <div>
@@ -42,14 +70,36 @@ export function SolutionSection() {
                 <span className="text-sm font-medium">Barbearia do Zé</span>
               </div>
               <div className="space-y-2.5 text-sm">
-                <div className="ml-auto max-w-[85%] rounded-2xl rounded-tr-sm bg-zap px-3.5 py-2 text-white">
+                <div
+                  className={cn(
+                    "ml-auto max-w-[85%] rounded-2xl rounded-tr-sm bg-zap px-3.5 py-2 text-white transition-all duration-500",
+                    visibleBubbles >= 1 ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0"
+                  )}
+                >
                   quero cortar cabelo amanhã
                 </div>
-                <div className="max-w-[85%] rounded-2xl rounded-tl-sm bg-background px-3.5 py-2 text-foreground/85">
+                <div
+                  className={cn(
+                    "max-w-[85%] rounded-2xl rounded-tl-sm bg-background px-3.5 py-2 text-foreground/85 transition-all duration-500",
+                    visibleBubbles >= 2 ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0"
+                  )}
+                >
                   Claro, Maria! Temos: 14:30, 15:00 e 16:30 com Júlio
                 </div>
-                <div className="ml-auto max-w-[85%] rounded-2xl rounded-tr-sm bg-zap px-3.5 py-2 text-white">15:00</div>
-                <div className="max-w-[85%] rounded-2xl rounded-tl-sm bg-background px-3.5 py-2 text-foreground/85">
+                <div
+                  className={cn(
+                    "ml-auto max-w-[85%] rounded-2xl rounded-tr-sm bg-zap px-3.5 py-2 text-white transition-all duration-500",
+                    visibleBubbles >= 3 ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0"
+                  )}
+                >
+                  15:00
+                </div>
+                <div
+                  className={cn(
+                    "max-w-[85%] rounded-2xl rounded-tl-sm bg-background px-3.5 py-2 text-foreground/85 transition-all duration-500",
+                    visibleBubbles >= 4 ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0"
+                  )}
+                >
                   ✅ Agendado! Pix confirmado. Até amanhã!
                 </div>
               </div>

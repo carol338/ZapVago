@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Zap, Check, ArrowRight, Bell, CreditCard, AlertTriangle } from "lucide-react";
+import { Zap, Check, ArrowRight, Bell, CreditCard, AlertTriangle, Star, Lock } from "lucide-react";
 import { FadeIn } from "./FadeIn";
 
 const DIAS = ["S", "T", "Q", "Q", "S", "S", "D"];
@@ -65,15 +65,28 @@ export function Hero() {
               </Button>
             </Link>
           </div>
-          <div className="mt-5 flex flex-wrap items-center justify-center gap-x-5 gap-y-1.5 text-sm text-foreground/50 lg:justify-start">
+
+          <FadeIn delay={340} className="mt-4 flex items-center justify-center gap-1.5 lg:justify-start">
+            <div className="flex gap-0.5 text-amber-400">
+              {Array.from({ length: 5 }).map((_, s) => (
+                <Star key={s} size={14} className="fill-current" />
+              ))}
+            </div>
+            <span className="text-sm text-foreground/60">4.9/5 (127 avaliações)</span>
+          </FadeIn>
+
+          <div className="mt-3 flex flex-wrap items-center justify-center gap-x-5 gap-y-1.5 text-sm text-foreground/50 lg:justify-start">
             {MICROCOPY.map((m, i) => (
-              <FadeIn key={m} delay={400 + i * 120} direction="up">
+              <FadeIn key={m} delay={460 + i * 120} direction="up">
                 <span className="flex items-center gap-1.5">
                   <Check size={14} className="text-zap-light" /> {m}
                 </span>
               </FadeIn>
             ))}
           </div>
+          <FadeIn delay={820} className="mt-2 flex items-center justify-center gap-1.5 text-sm text-foreground/50 lg:justify-start">
+            <Lock size={14} className="text-zap-light" /> Seus dados protegidos pela LGPD
+          </FadeIn>
         </FadeIn>
 
         <FadeIn direction="right" delay={150} className="relative">
