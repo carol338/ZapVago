@@ -108,8 +108,16 @@ export function normalizePhone(phone: string): string {
  * Meta para provar que o payload veio de fato dela e não foi forjado. Calcula
  * o HMAC SHA256 do corpo BRUTO (raw body, antes de qualquer parse) usando o
  * WHATSAPP_APP_SECRET do app na Meta, e compara em tempo constante.
+ *
+ * Em MOCK_MODE, pula a verificação — dá pra simular mensagens recebidas
+ * sem calcular HMAC, igual ao resto do app em modo mock. Fora do mock, a
+ * verificação é SEMPRE obrigatória: sem WHATSAPP_APP_SECRET configurado,
+ * o payload é rejeitado (falha fechada), nunca aceito — do contrário,
+ * esquecer de configurar o secret em produção reabriria a falha que essa
+ * verificação existe pra fechar.
  */
 export function verifyPayloadSignature(rawBody: string, signatureHeader: string | null): boolean {
+  if (isMockMode()) return true;
   if (!signatureHeader || !WHATSAPP_APP_SECRET) return false;
 
   const expected = `sha256=${createHmac("sha256", WHATSAPP_APP_SECRET).update(rawBody, "utf8").digest("hex")}`;
