@@ -64,7 +64,7 @@ export async function offerSlotToWaitingList(appointmentId: string) {
   const horario = appointment.date.toLocaleString("pt-BR", { weekday: "long", hour: "2-digit", minute: "2-digit" });
   const msg = `${first.client.name.split(" ")[0]}! Cancelou um horário ${horario} com ${appointment.professional.name} para ${appointment.service.name}. Ainda quer? Responda SIM em ${OFFER_TIMEOUT_MINUTES} minutos para garantir. ⏰`;
 
-  await sendWhatsAppMessage(first.client.phone, msg);
+  await sendWhatsAppMessage(first.client.phone, msg, appointment.businessId);
   await prisma.waitingListEntry.update({
     where: { id: first.id },
     data: { notified: true, notifiedAt: new Date(), offeredAppointmentId: appointmentId },

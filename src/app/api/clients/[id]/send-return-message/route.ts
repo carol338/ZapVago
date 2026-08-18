@@ -19,7 +19,7 @@ export async function POST(_req: NextRequest, { params }: { params: { id: string
   const primeiro = client.name.split(" ")[0];
   const msg = `${primeiro}, já faz ${dias} dias desde sua última visita. ${profissional === "a gente" ? "Estamos" : `${profissional} está`} com horários disponíveis essa semana. Quer agendar?`;
 
-  const result = await sendWhatsAppMessage(client.phone, msg);
+  const result = await sendWhatsAppMessage(client.phone, msg, businessId);
   await prisma.client.update({ where: { id: client.id }, data: { lastContactedAt: new Date() } });
 
   return NextResponse.json({ ok: true, mocked: result.mocked, message: msg });

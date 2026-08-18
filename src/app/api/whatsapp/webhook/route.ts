@@ -133,7 +133,7 @@ async function handleIncomingMessage(businessId: string, clientPhone: string, te
     if (pendingOffer) {
       const classification = classifyWaitingListReply(text);
       if (classification !== "unclear") {
-        await respondToWaitingListOffer(conversation.id, history, pendingOffer, classification, clientPhone, text);
+        await respondToWaitingListOffer(businessId, conversation.id, history, pendingOffer, classification, clientPhone, text);
         return;
       }
     }
@@ -177,11 +177,12 @@ async function handleIncomingMessage(businessId: string, clientPhone: string, te
   await executeAction(businessId, client, clientPhone, botResult);
 
   // Sempre responde ao cliente pelo WhatsApp (a menos que só tenha transferido silenciosamente)
-  await sendWhatsAppMessage(clientPhone, botResult.response);
+  await sendWhatsAppMessage(clientPhone, botResult.response, businessId);
 }
 
 /** Confirma, recusa ou pula a oferta de vaga da lista de espera, e responde o cliente. */
 async function respondToWaitingListOffer(
+  businessId: string,
   conversationId: string,
   history: any[],
   offer: { id: string; client: { name: string } },
@@ -209,7 +210,7 @@ async function respondToWaitingListOffer(
     { role: "bot", content: response, timestamp: new Date().toISOString() },
   ];
   await prisma.conversation.update({ where: { id: conversationId }, data: { messages: updatedMessages } });
-  await sendWhatsAppMessage(clientPhone, response);
+  await sendWhatsAppMessage(clientPhone, response, businessId);
 }
 
 async function executeAction(businessId: string, client: any, clientPhone: string, botResult: any) {
@@ -269,7 +270,7 @@ async function executeAction(businessId: string, client: any, clientPhone: strin
       await scheduleReminders(appointment.id, startDate);
 
       if (redeemed) {
-        await sendWhatsAppMessage(clientPhone, `🎁 Já incluí sua recompensa de fidelidade nesse agendamento!`);
+        await sendWhatsAppMessage(clientPhone, `🎁 Já incluí sua recompensa de fidelidade nesse agendamento!`, businessId);
       } else {
         // Avisa se o cliente JÁ tem pontos suficientes pra outra recompensa
         // (de visitas concluídas de verdade) — não é especulativo sobre esse agendamento.
@@ -277,7 +278,8 @@ async function executeAction(businessId: string, client: any, clientPhone: strin
         if (reward) {
           await sendWhatsAppMessage(
             clientPhone,
-            `🎉 Você tem ${existingClient.loyaltyPoints} visitas completas e ganhou uma recompensa especial! Quer incluir no seu próximo atendimento?`
+            `🎉 Você tem ${existingClient.loyaltyPoints} visitas completas e ganhou uma recompensa especial! Quer incluir no seu próximo atendimento?`,
+            businessId
           );
         }
       }

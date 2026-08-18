@@ -32,7 +32,7 @@ new Worker(
 
     const quando = type === "24h" ? "amanhã" : "em 1 hora";
     const msg = `Oi ${appointment.client.name.split(" ")[0]}! Lembrando do seu ${appointment.service.name} ${quando} com ${appointment.professional.name} 💈 Confirma presença?`;
-    await sendWhatsAppMessage(appointment.client.phone, msg);
+    await sendWhatsAppMessage(appointment.client.phone, msg, appointment.businessId);
 
     const field = type === "24h" ? { reminderSent24: true } : { reminderSent1: true };
     await prisma.appointment.update({ where: { id: appointmentId }, data: field });
@@ -86,7 +86,7 @@ new Worker(
       const msg =
         (flashSale.message || `🔥 ${flashSale.name}: ${flashSale.discountPercent}% OFF hoje! Bora aproveitar?`) +
         `\n\n👉 ${link}`;
-      await sendWhatsAppMessage(client.phone, msg);
+      await sendWhatsAppMessage(client.phone, msg, flashSale.businessId);
     }
 
     await prisma.flashSale.update({

@@ -22,7 +22,7 @@ export async function POST(_req: NextRequest, { params }: { params: { id: string
   const primeiro = appointment.client.name.split(" ")[0];
   const msg = `${primeiro}, confirmando seu horário de ${hora} com ${appointment.professional.name}. Pode confirmar? 😊`;
 
-  const result = await sendWhatsAppMessage(appointment.client.phone, msg);
+  const result = await sendWhatsAppMessage(appointment.client.phone, msg, businessId);
 
   return NextResponse.json({ ok: true, mocked: result.mocked });
 }

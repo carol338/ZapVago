@@ -1,11 +1,16 @@
 /**
- * Wrapper de envio de mensagens via WhatsApp Business Cloud API
- * (através de um provedor como 360dialog ou WapBiz).
+ * Wrapper de envio de mensagens via WhatsApp Business Cloud API.
+ * Multi-tenant: cada negócio tem seu próprio phoneNumberId/accessToken,
+ * gravados em Business.whatsappProviderConfig (ver /api/business/whatsapp-config).
+ * O WHATSAPP_API_TOKEN/WHATSAPP_PHONE_NUMBER_ID do .env só entram como
+ * fallback — útil em desenvolvimento, antes de qualquer negócio ter
+ * conectado o próprio número.
  * Em MOCK_MODE, apenas loga a mensagem que seria enviada — útil para
  * testar o fluxo completo sem uma conta WhatsApp Business configurada.
  */
 import { createHmac, timingSafeEqual } from "crypto";
 import { isMockMode } from "@/lib/mock";
+import { prisma } from "@/lib/prisma";
 
 const WHATSAPP_API_TOKEN = process.env.WHATSAPP_API_TOKEN;
 const WHATSAPP_PHONE_NUMBER_ID = process.env.WHATSAPP_PHONE_NUMBER_ID;
@@ -21,22 +26,48 @@ export interface SendResult {
   error?: string;
 }
 
-/** Envia uma mensagem de texto simples para um número de WhatsApp. */
-export async function sendWhatsAppMessage(to: string, text: string): Promise<SendResult> {
+interface WhatsAppCredentials {
+  phoneNumberId: string;
+  accessToken: string;
+}
+
+/** Busca as credenciais do negócio no banco; cai pro .env global se o negócio não tiver conectado o próprio número. */
+async function resolveCredentials(businessId: string): Promise<{ creds: WhatsAppCredentials | null; source: "business" | "env" }> {
+  const business = await prisma.business.findUnique({ where: { id: businessId }, select: { whatsappProviderConfig: true } });
+  const config = business?.whatsappProviderConfig as { phoneNumberId?: string; accessToken?: string } | null;
+  if (config?.phoneNumberId && config?.accessToken) {
+    return { creds: { phoneNumberId: config.phoneNumberId, accessToken: config.accessToken }, source: "business" };
+  }
+
+  if (WHATSAPP_API_TOKEN && WHATSAPP_PHONE_NUMBER_ID) {
+    return { creds: { phoneNumberId: WHATSAPP_PHONE_NUMBER_ID, accessToken: WHATSAPP_API_TOKEN }, source: "env" };
+  }
+  return { creds: null, source: "env" };
+}
+
+/** Envia uma mensagem de texto simples para um número de WhatsApp, usando as credenciais do negócio. */
+export async function sendWhatsAppMessage(to: string, text: string, businessId: string): Promise<SendResult> {
   if (isMockMode()) {
     console.log(`[whatsapp.ts MOCK] Enviando para ${to}: "${text}"`);
     return { success: true, mocked: true, reason: "mock_mode", messageId: `mock_${Date.now()}` };
   }
-  if (!WHATSAPP_API_TOKEN || !WHATSAPP_PHONE_NUMBER_ID) {
+
+  const { creds, source } = await resolveCredentials(businessId);
+  if (!creds) {
     console.log(`[whatsapp.ts MOCK] Enviando para ${to}: "${text}"`);
     return { success: true, mocked: true, reason: "not_configured", messageId: `mock_${Date.now()}` };
   }
+  if (source === "env") {
+    console.warn(
+      `[whatsapp.ts] Negócio ${businessId} sem whatsappProviderConfig — usando o WHATSAPP_API_TOKEN global do .env (só deveria acontecer em desenvolvimento).`
+    );
+  }
 
   try {
-    const res = await fetch(`${GRAPH_API_BASE}/${WHATSAPP_PHONE_NUMBER_ID}/messages`, {
+    const res = await fetch(`${GRAPH_API_BASE}/${creds.phoneNumberId}/messages`, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${WHATSAPP_API_TOKEN}`,
+        Authorization: `Bearer ${creds.accessToken}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
@@ -49,12 +80,12 @@ export async function sendWhatsAppMessage(to: string, text: string): Promise<Sen
 
     const json = await res.json();
     if (!res.ok) {
-      console.error("[whatsapp.ts] Erro ao enviar mensagem:", json);
+      console.error(`[whatsapp.ts] Erro ao enviar mensagem (negócio ${businessId}):`, JSON.stringify(json));
       return { success: false, mocked: false, error: JSON.stringify(json) };
     }
     return { success: true, mocked: false, messageId: json.messages?.[0]?.id };
   } catch (err) {
-    console.error("[whatsapp.ts] Erro de rede ao enviar mensagem:", err);
+    console.error(`[whatsapp.ts] Erro de rede ao enviar mensagem (negócio ${businessId}):`, err);
     return { success: false, mocked: false, error: String(err) };
   }
 }

@@ -36,19 +36,21 @@ export async function handleOwnerReply(businessId: string, text: string): Promis
     for (const c of alvo) {
       const result = await sendWhatsAppMessage(
         c.phone,
-        `Saudades de você, ${c.name.split(" ")[0]}! 💈 Que tal voltar? Temos horários disponíveis essa semana. Quer agendar?`
+        `Saudades de você, ${c.name.split(" ")[0]}! 💈 Que tal voltar? Temos horários disponíveis essa semana. Quer agendar?`,
+        businessId
       );
       if (result.success) enviados += 1;
     }
 
-    await sendWhatsAppMessage(owner.phone, `✅ Mensagem enviada para ${enviados} cliente(s) sumido(s).`);
+    await sendWhatsAppMessage(owner.phone, `✅ Mensagem enviada para ${enviados} cliente(s) sumido(s).`, businessId);
     return true;
   }
 
   if (/feir[aã]o/.test(lower)) {
     await sendWhatsAppMessage(
       owner.phone,
-      `⚡ Boa! Abre o painel em Feirões e crie uma oferta pro horário mais ocioso — o sistema já dispara pros clientes certos automaticamente.`
+      `⚡ Boa! Abre o painel em Feirões e crie uma oferta pro horário mais ocioso — o sistema já dispara pros clientes certos automaticamente.`,
+      businessId
     );
     return true;
   }

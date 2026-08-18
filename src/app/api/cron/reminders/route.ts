@@ -35,14 +35,16 @@ export async function POST(req: NextRequest) {
   for (const a of due24h) {
     await sendWhatsAppMessage(
       a.client.phone,
-      `Oi ${a.client.name.split(" ")[0]}! Lembrando do seu ${a.service.name} amanhã com ${a.professional.name} 💈 Confirma presença?`
+      `Oi ${a.client.name.split(" ")[0]}! Lembrando do seu ${a.service.name} amanhã com ${a.professional.name} 💈 Confirma presença?`,
+      a.businessId
     );
     await prisma.appointment.update({ where: { id: a.id }, data: { reminderSent24: true } });
   }
   for (const a of due1h) {
     await sendWhatsAppMessage(
       a.client.phone,
-      `${a.client.name.split(" ")[0]}, seu horário é daqui a 1 hora com ${a.professional.name}! 🕐 Já tá vindo?`
+      `${a.client.name.split(" ")[0]}, seu horário é daqui a 1 hora com ${a.professional.name}! 🕐 Já tá vindo?`,
+      a.businessId
     );
     await prisma.appointment.update({ where: { id: a.id }, data: { reminderSent1: true } });
   }
