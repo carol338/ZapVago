@@ -47,8 +47,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Não foi possível processar o pagamento no cartão." }, { status: 502 });
   }
 
-  if (result.status !== "approved") {
+  if (result.status === "rejected") {
     return NextResponse.json({ status: "rejected" }, { status: 402 });
+  }
+
+  if (result.status === "pending") {
+    // Nem aprovado nem recusado ainda — alguns métodos ficam em análise
+    // assíncrona. Guardamos o paymentId pra o webhook confirmar de verdade
+    // quando o Mercado Pago decidir (não confirmamos o agendamento aqui).
+    await prisma.appointment.update({ where: { id: appointmentId }, data: { paymentId: result.paymentId, paymentStatus: "PENDING" } });
+    return NextResponse.json({ status: "pending", appointmentId, mocked: result.mocked });
   }
 
   await confirmAppointmentPayment(appointmentId, result.paymentId);

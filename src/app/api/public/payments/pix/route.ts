@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({
     paymentId: charge.paymentId,
-    qrCodeText: charge.qrCodeText,
+    qrCode: charge.qrCode,
     qrCodeBase64: charge.qrCodeBase64,
     expiresAt: charge.expiresAt,
     amount,
