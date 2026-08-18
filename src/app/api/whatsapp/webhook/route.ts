@@ -10,7 +10,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { verifyWebhook, sendWhatsAppMessage, normalizePhone } from "@/lib/whatsapp";
+import { verifyWebhook, verifyPayloadSignature, sendWhatsAppMessage, normalizePhone } from "@/lib/whatsapp";
 import { askClaude } from "@/lib/claude";
 import { buildSystemPrompt } from "@/lib/prompt";
 import { visitsUntilNextReward, checkLoyaltyReward, tryRedeemLoyaltyReward } from "@/lib/loyalty";
@@ -41,8 +41,18 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  // Lê o corpo BRUTO antes de qualquer parse — a assinatura da Meta é
+  // calculada sobre os bytes exatos recebidos, não sobre o JSON re-serializado.
+  const rawBody = await req.text();
+  const signature = req.headers.get("x-hub-signature-256");
+
+  if (!verifyPayloadSignature(rawBody, signature)) {
+    console.error("[whatsapp/webhook] Assinatura X-Hub-Signature-256 ausente ou inválida — payload rejeitado.");
+    return NextResponse.json({ error: "Assinatura inválida." }, { status: 401 });
+  }
+
   try {
-    const body = await req.json();
+    const body = JSON.parse(rawBody);
 
     // Formato do payload segue o padrão da WhatsApp Cloud API.
     const entry = body.entry?.[0];
