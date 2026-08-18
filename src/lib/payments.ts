@@ -81,7 +81,7 @@ async function postPayment(body: Record<string, unknown>, context: Record<string
 
 export interface PixCharge {
   paymentId: string;
-  qrCodeText: string; // código "copia e cola"
+  qrCode: string; // código "copia e cola"
   qrCodeBase64?: string; // imagem do QR Code em base64 (só disponível na integração real)
   expiresAt: string; // ISO
   mocked: boolean;
@@ -99,11 +99,15 @@ export async function createPixCharge(params: {
     console.log(`[payments.ts MOCK] Pix criado: ${params.description} — R$ ${params.amount.toFixed(2)}`);
     return {
       paymentId,
-      qrCodeText: `00020126PIXMOCK...${paymentId}...VALOR${params.amount.toFixed(2)}5303986304MOCK`,
+      qrCode: `00020126PIXMOCK...${paymentId}...VALOR${params.amount.toFixed(2)}5303986304MOCK`,
       expiresAt: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
       mocked: true,
     };
   }
+
+  console.log(
+    `[payments.ts] Criando cobrança Pix: appointmentId=${params.appointmentId} businessId=${params.businessId} amount=${params.amount}`
+  );
 
   const payment = await postPayment(
     {
@@ -128,9 +132,11 @@ export async function createPixCharge(params: {
     throw new Error("Mercado Pago não retornou o código Pix.");
   }
 
+  console.log(`[payments.ts] Pix criado com sucesso: paymentId=${payment.id} appointmentId=${params.appointmentId} status=${payment.status}`);
+
   return {
     paymentId: String(payment.id),
-    qrCodeText: qrCode,
+    qrCode,
     qrCodeBase64,
     // Mercado Pago define o próprio prazo de expiração do Pix; refletimos aqui
     // o que ele retornou. Se não vier, mantemos os 15min que o resto do app assume.
@@ -141,9 +147,22 @@ export async function createPixCharge(params: {
 
 export interface CardChargeResult {
   paymentId: string;
-  status: "approved" | "rejected";
+  status: "approved" | "rejected" | "pending";
   statusDetail?: string;
   mocked: boolean;
+}
+
+function mapCardStatus(mpStatus: string): "approved" | "rejected" | "pending" {
+  switch (mpStatus) {
+    case "approved":
+      return "approved";
+    case "pending":
+    case "in_process":
+    case "authorized":
+      return "pending";
+    default:
+      return "rejected";
+  }
 }
 
 export async function chargeCard(params: {
@@ -178,6 +197,10 @@ export async function chargeCard(params: {
     );
   }
 
+  console.log(
+    `[payments.ts] Cobrando cartão: appointmentId=${params.appointmentId} amount=${params.amount} installments=${params.installments}`
+  );
+
   const payment = await postPayment(
     {
       transaction_amount: roundCurrency(params.amount),
@@ -192,16 +215,21 @@ export async function chargeCard(params: {
     { appointmentId: params.appointmentId, kind: "card" }
   );
 
-  if (payment.status !== "approved") {
+  const status = mapCardStatus(payment.status);
+  if (status === "rejected") {
     console.error(
-      `[payments.ts] Cartão recusado pelo Mercado Pago (payment ${payment.id}):`,
+      `[payments.ts] Cartão recusado pelo Mercado Pago (payment ${payment.id}, appointmentId=${params.appointmentId}):`,
       JSON.stringify({ status: payment.status, statusDetail: payment.status_detail })
+    );
+  } else {
+    console.log(
+      `[payments.ts] Cartão ${status === "approved" ? "aprovado" : "pendente"}: paymentId=${payment.id} appointmentId=${params.appointmentId} status=${payment.status}`
     );
   }
 
   return {
     paymentId: String(payment.id),
-    status: payment.status === "approved" ? "approved" : "rejected",
+    status,
     statusDetail: payment.status_detail,
     mocked: false,
   };

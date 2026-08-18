@@ -105,7 +105,7 @@ export function BookingFlow({
   const [cardErrors, setCardErrors] = useState<Record<string, string>>({});
   const [cardStage, setCardStage] = useState<"form" | "processing" | "approved">("form");
 
-  const [pix, setPix] = useState<{ appointmentId: string; qrCodeText: string; expiresAt: string } | null>(null);
+  const [pix, setPix] = useState<{ appointmentId: string; qrCode: string; expiresAt: string } | null>(null);
   const [pixSecondsLeft, setPixSecondsLeft] = useState(0);
   const [pixExpired, setPixExpired] = useState(false);
   const [confirming, setConfirming] = useState(false);
@@ -238,7 +238,7 @@ export function BookingFlow({
         });
         const pixData = await pixRes.json();
         if (!pixRes.ok) throw new Error("Não foi possível gerar o Pix.");
-        setPix({ appointmentId: created.appointmentId, qrCodeText: pixData.qrCodeText, expiresAt: pixData.expiresAt });
+        setPix({ appointmentId: created.appointmentId, qrCode: pixData.qrCode, expiresAt: pixData.expiresAt });
       }
     } catch (e: any) {
       setError(e.message ?? "Algo deu errado. Tenta de novo.");
@@ -322,10 +322,10 @@ export function BookingFlow({
             <>
               <div className="mb-3 rounded-lg border border-white/10 bg-black/30 p-3 text-left">
                 <p className="mb-1 text-[10px] uppercase text-white/40">Código copia e cola</p>
-                <p className="break-all font-mono text-xs text-white/70">{pix.qrCodeText}</p>
+                <p className="break-all font-mono text-xs text-white/70">{pix.qrCode}</p>
               </div>
               <button
-                onClick={() => navigator.clipboard.writeText(pix.qrCodeText)}
+                onClick={() => navigator.clipboard.writeText(pix.qrCode)}
                 className="mb-4 flex min-h-[44px] w-full items-center justify-center gap-2 rounded-lg border border-white/10 text-sm font-medium hover:bg-white/5"
               >
                 <Copy size={15} /> Copiar código
