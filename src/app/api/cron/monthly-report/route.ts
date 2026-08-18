@@ -1,24 +1,21 @@
 /**
- * GET/POST /api/cron/monthly-report — alternativa ao BullMQ para ambientes
- * serverless (ex: Vercel Cron). Chame no dia 1 às 08h com header
- * Authorization: Bearer CRON_SECRET.
- *
- * O Vercel Cron dispara com GET (e injeta esse header automaticamente
- * quando CRON_SECRET está configurado no projeto) — por isso GET precisa
- * existir aqui, não só POST. Mantemos POST também, pra quem preferir
- * chamar via cron externo (cron-job.org, GitHub Actions etc.) com POST.
+ * GET/POST /api/cron/monthly-report — processa o relatório mensal
+ * diretamente no banco, sem fila (BullMQ não roda em ambiente serverless
+ * da Vercel — o worker em src/lib/worker.ts continua existindo só para
+ * desenvolvimento local com Redis). Registrado no vercel.json pra rodar
+ * dia 1 de cada mês às 08h; GET existe porque é o método que o Vercel
+ * Cron (e a maioria dos crons externos) usa por padrão.
  */
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { buildMonthlyReportMessage } from "@/lib/reports";
 import { notifyOwner } from "@/lib/notify";
+import { requireCronSecret } from "@/lib/cron-auth";
 
 /** Envia o relatório mensal pra todos os negócios ativos — chamado pelo Vercel Cron (dia 1, 08h — ver vercel.json). */
 async function sendMonthlyReports(req: NextRequest): Promise<NextResponse> {
-  const auth = req.headers.get("authorization");
-  if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: "Não autorizado." }, { status: 401 });
-  }
+  const unauthorized = requireCronSecret(req);
+  if (unauthorized) return unauthorized;
 
   const owners = await prisma.owner.findMany();
   let sent = 0;
@@ -30,7 +27,7 @@ async function sendMonthlyReports(req: NextRequest): Promise<NextResponse> {
     sent += 1;
   }
 
-  return NextResponse.json({ ok: true, sent });
+  return NextResponse.json({ success: true, sent });
 }
 
 export async function GET(req: NextRequest) {
