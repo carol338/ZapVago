@@ -23,7 +23,18 @@ export async function POST(req: NextRequest) {
   }
 
   const amount = appointment.price ?? appointment.service.price;
-  const charge = await createPixCharge({ amount, description: `Agendamento ${appointment.service.name}` });
+  let charge;
+  try {
+    charge = await createPixCharge({
+      amount,
+      description: `Agendamento ${appointment.service.name}`,
+      appointmentId,
+      businessId: appointment.businessId,
+    });
+  } catch (err) {
+    console.error("[api/public/payments/pix] Erro ao criar cobrança Pix:", err);
+    return NextResponse.json({ error: "Não foi possível gerar o Pix." }, { status: 502 });
+  }
   const expiresAt = new Date(charge.expiresAt);
 
   await prisma.appointment.update({
@@ -34,6 +45,7 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({
     paymentId: charge.paymentId,
     qrCodeText: charge.qrCodeText,
+    qrCodeBase64: charge.qrCodeBase64,
     expiresAt: charge.expiresAt,
     amount,
     mocked: charge.mocked,

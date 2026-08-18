@@ -8,10 +8,14 @@ import { chargeCard } from "@/lib/payments";
 import { confirmAppointmentPayment } from "@/lib/booking";
 
 export async function POST(req: NextRequest) {
-  const { appointmentId, token, installments } = (await req.json()) as {
+  const { appointmentId, token, installments, cardToken, paymentMethodId } = (await req.json()) as {
     appointmentId: string;
     token: string;
     installments?: number;
+    // Gerados pelo SDK de tokenização do Mercado Pago no frontend (Card Form/Bricks) —
+    // ainda não implementado na página pública, por isso são opcionais por enquanto.
+    cardToken?: string;
+    paymentMethodId?: string;
   };
   if (!appointmentId || !token) {
     return NextResponse.json({ error: "appointmentId e token são obrigatórios." }, { status: 400 });
@@ -28,7 +32,20 @@ export async function POST(req: NextRequest) {
   }
 
   const amount = appointment.price ?? appointment.service.price;
-  const result = await chargeCard({ amount, installments: installments ?? 1 });
+  let result;
+  try {
+    result = await chargeCard({
+      amount,
+      description: `Agendamento ${appointment.service.name}`,
+      appointmentId,
+      installments: installments ?? 1,
+      cardToken: cardToken ?? "",
+      paymentMethodId,
+    });
+  } catch (err) {
+    console.error("[api/public/payments/card] Erro ao cobrar cartão:", err);
+    return NextResponse.json({ error: "Não foi possível processar o pagamento no cartão." }, { status: 502 });
+  }
 
   if (result.status !== "approved") {
     return NextResponse.json({ status: "rejected" }, { status: 402 });
