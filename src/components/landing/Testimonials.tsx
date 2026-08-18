@@ -8,7 +8,7 @@ const DEPOIMENTOS = [
     nome: "João Pereira",
     negocio: "Barbearia do Zé",
     cidade: "São Paulo, SP",
-    foto: "https://randomuser.me/api/portraits/men/32.jpg",
+    foto: "/testimonials/joao-pereira.webp",
     texto:
       "Antes eu perdia 2 horas por dia respondendo WhatsApp. Agora o bot agenda sozinho e eu só atendo. Meu faturamento subiu 40%.",
     resultado: "Faltas caíram de 20% para 2%",
@@ -17,18 +17,19 @@ const DEPOIMENTOS = [
     nome: "Ana Souza",
     negocio: "Clínica de Estética Bella",
     cidade: "Belo Horizonte, MG",
-    foto: "https://randomuser.me/api/portraits/women/44.jpg",
+    foto: "/testimonials/ana-souza.webp",
     texto:
       "O prontuário inteligente faz minhas clientes se sentirem VIP. Elas voltam mais e gastam mais. Recuperei R$ 3.000/mês só com o feirão.",
     resultado: "Faturamento +35% em 2 meses",
   },
   {
-    nome: "Carlos Lima",
-    negocio: "Pet Shop Animal Feliz",
-    cidade: "Curitiba, PR",
-    foto: "https://randomuser.me/api/portraits/men/67.jpg",
-    texto: "A lista de espera ativa preenche meus cancelamentos sozinha. Nunca mais tive horário vago num sábado.",
-    resultado: "Zero horários ociosos aos sábados",
+    nome: "Camila Rocha",
+    negocio: "Salão Camila Rocha",
+    cidade: "Recife, PE",
+    foto: "/testimonials/camila-rocha.webp",
+    texto:
+      "Meu salão tem 4 profissionais e antes eu vivia confundindo agenda. Agora cada uma tem sua cor e nenhuma cliente é esquecida. Lotamos os sábados sem esforço.",
+    resultado: "Ocupação aos sábados: 60% → 100%",
   },
 ];
 
@@ -47,7 +48,7 @@ export function Testimonials() {
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={d.foto}
-                    alt={`Foto de ${d.nome}, dono de ${d.negocio}`}
+                    alt={`Foto de ${d.nome} — ${d.negocio}`}
                     width={56}
                     height={56}
                     className="h-14 w-14 shrink-0 rounded-full object-cover"
