@@ -25,7 +25,7 @@ const MERCADOPAGO_ACCESS_TOKEN = process.env.MERCADOPAGO_ACCESS_TOKEN;
 
 interface MercadoPagoPayment {
   id: number;
-  status: string; // "approved" | "pending" | "in_process" | "authorized" | "rejected" | "cancelled" | ...
+  status: string; // "approved" | "pending" | "in_process" | "authorized" | "rejected" | "cancelled" | "refunded" | ...
   transaction_amount: number;
   external_reference: string | null;
 }
@@ -38,8 +38,10 @@ export async function POST(req: NextRequest) {
   const paymentId = await extractPaymentId(req);
   if (!paymentId) {
     // Notificação de outro tipo (ex: merchant_order) ou sem id — nada a processar.
+    console.log("[mercadopago webhook] Notificação recebida sem payment_id reconhecível — ignorada.");
     return NextResponse.json({ ok: true });
   }
+  console.log(`[mercadopago webhook] Notificação recebida para payment_id ${paymentId}.`);
 
   if (!MERCADOPAGO_ACCESS_TOKEN) {
     console.error("[mercadopago webhook] MERCADOPAGO_ACCESS_TOKEN não configurado — impossível verificar o pagamento.");
@@ -54,9 +56,11 @@ export async function POST(req: NextRequest) {
   // external_reference é definido por NÓS na hora de criar a cobrança (id do
   // Appointment) — é o único jeito confiável de saber a qual agendamento (e
   // negócio) esse pagamento pertence, já que a notificação em si não carrega isso.
+  // Sem ele (ou apontando pra um agendamento que não existe), rejeitamos e
+  // logamos como possível incidente, nunca processamos.
   const appointmentId = payment.external_reference;
   if (!appointmentId) {
-    console.error(`[mercadopago webhook] Pagamento ${payment.id} sem external_reference — ignorado.`);
+    console.error(`[mercadopago webhook] REJEITADO: pagamento ${payment.id} sem external_reference.`);
     return NextResponse.json({ ok: true });
   }
 
@@ -65,7 +69,7 @@ export async function POST(req: NextRequest) {
     include: { service: true },
   });
   if (!appointment) {
-    console.error(`[mercadopago webhook] external_reference "${appointmentId}" não corresponde a nenhum agendamento — ignorado.`);
+    console.error(`[mercadopago webhook] REJEITADO: external_reference "${appointmentId}" (pagamento ${payment.id}) não corresponde a nenhum agendamento.`);
     return NextResponse.json({ ok: true });
   }
 
@@ -73,7 +77,7 @@ export async function POST(req: NextRequest) {
   // expirou e um novo foi gerado depois), essa notificação é de uma cobrança velha.
   if (appointment.paymentId && appointment.paymentId !== String(payment.id)) {
     console.error(
-      `[mercadopago webhook] payment_id ${payment.id} não bate com o paymentId atual do agendamento ${appointmentId} (${appointment.paymentId}) — ignorado.`
+      `[mercadopago webhook] REJEITADO: payment_id ${payment.id} não bate com o paymentId atual do agendamento ${appointmentId} (${appointment.paymentId}).`
     );
     return NextResponse.json({ ok: true });
   }
@@ -86,6 +90,7 @@ export async function POST(req: NextRequest) {
 
   // Idempotência: mesma notificação (ou reenvio) do mesmo payment_id já processada antes.
   if (appointment.paymentId === String(payment.id) && appointment.paymentStatus === mapped) {
+    console.log(`[mercadopago webhook] DUPLICADO: pagamento ${payment.id} (agendamento ${appointmentId}) já estava como ${mapped} — nada a fazer.`);
     return NextResponse.json({ ok: true, status: mapped, alreadyProcessed: true });
   }
 
@@ -96,17 +101,33 @@ export async function POST(req: NextRequest) {
     const amountMatches = Math.abs(payment.transaction_amount - expectedAmount) < 0.01;
     if (!amountMatches) {
       console.error(
-        `[mercadopago webhook] Valor divergente no pagamento ${payment.id} do agendamento ${appointmentId}: esperado ${expectedAmount}, recebido ${payment.transaction_amount} — NÃO confirmado.`
+        `[mercadopago webhook] FRAUDE/INCIDENTE: valor divergente no pagamento ${payment.id} do agendamento ${appointmentId} — esperado ${expectedAmount}, recebido ${payment.transaction_amount}. NÃO confirmado.`
       );
       return NextResponse.json({ ok: true, status: "amount_mismatch" });
     }
+    console.log(`[mercadopago webhook] APROVADO: pagamento ${payment.id} confirmado para o agendamento ${appointmentId} (R$ ${payment.transaction_amount}).`);
     await confirmAppointmentPayment(appointmentId, String(payment.id));
   } else if (mapped === "FAILED") {
+    // "rejected"/"cancelled" na API do Mercado Pago: o pagamento não vingou — o
+    // agendamento em si vira CANCELLED (não faz sentido manter um horário
+    // reservado sem pagamento associado), e paymentStatus registra que a
+    // cobrança falhou (o schema não tem um valor "CANCELLED" próprio pra pagamento).
+    console.log(`[mercadopago webhook] ${payment.status === "rejected" ? "REJEITADO" : "CANCELADO"}: pagamento ${payment.id} do agendamento ${appointmentId}.`);
     await prisma.appointment.update({
       where: { id: appointmentId },
       data: { paymentStatus: "FAILED", status: "CANCELLED", paymentId: String(payment.id) },
     });
+  } else if (mapped === "REFUNDED") {
+    // Estorno: só mexe no paymentStatus. Não mexemos em appointment.status aqui —
+    // um reembolso pode acontecer bem depois do atendimento já ter sido prestado,
+    // então cancelar automaticamente o agendamento seria uma suposição indevida.
+    console.log(`[mercadopago webhook] ESTORNADO: pagamento ${payment.id} do agendamento ${appointmentId} foi reembolsado.`);
+    await prisma.appointment.update({
+      where: { id: appointmentId },
+      data: { paymentStatus: "REFUNDED", paymentId: String(payment.id) },
+    });
   } else {
+    console.log(`[mercadopago webhook] PENDENTE: pagamento ${payment.id} do agendamento ${appointmentId} (status "${payment.status}").`);
     await prisma.appointment.update({
       where: { id: appointmentId },
       data: { paymentStatus: "PENDING", paymentId: String(payment.id) },
@@ -116,10 +137,17 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({ ok: true, status: mapped });
 }
 
-/** Extrai o payment_id da notificação — webhooks v2 (JSON) ou IPN clássico (query string). */
+/**
+ * Extrai o payment_id da notificação. O Mercado Pago manda esse ponteiro em
+ * formatos diferentes dependendo da integração:
+ * - Webhooks v2: { type: "payment", data: { id } }
+ * - Ou com "action" em vez de "type": { action: "payment.created"/"payment.updated", data: { id } }
+ * - IPN clássico (query string): ?type=payment&data.id=... ou ?topic=payment&id=...
+ */
 async function extractPaymentId(req: NextRequest): Promise<string | null> {
   const body = await req.json().catch(() => null);
-  if (body?.type === "payment" && body?.data?.id) return String(body.data.id);
+  const isPaymentEvent = body?.type === "payment" || (typeof body?.action === "string" && body.action.startsWith("payment."));
+  if (isPaymentEvent && body?.data?.id) return String(body.data.id);
 
   const { searchParams } = req.nextUrl;
   const type = searchParams.get("type") ?? searchParams.get("topic");
@@ -146,7 +174,7 @@ async function fetchPayment(paymentId: string): Promise<MercadoPagoPayment | nul
   }
 }
 
-function mapPaymentStatus(mpStatus: string): "PAID" | "PENDING" | "FAILED" | null {
+function mapPaymentStatus(mpStatus: string): "PAID" | "PENDING" | "FAILED" | "REFUNDED" | null {
   switch (mpStatus) {
     case "approved":
       return "PAID";
@@ -157,6 +185,8 @@ function mapPaymentStatus(mpStatus: string): "PAID" | "PENDING" | "FAILED" | nul
     case "rejected":
     case "cancelled":
       return "FAILED";
+    case "refunded":
+      return "REFUNDED";
     default:
       return null;
   }

@@ -184,7 +184,7 @@ model Appointment {
   // Pagamento (Página de Agendamento — Parte 3)
   price           Float?  // valor final cobrado (pode diferir do service.price por desconto/combo)
   paymentMethod   String? // "pix" | "card" | "local"
-  paymentStatus   String  @default("NONE") // "NONE" | "PENDING" | "PAID" | "FAILED"
+  paymentStatus   String  @default("NONE") // "NONE" | "PENDING" | "PAID" | "FAILED" | "REFUNDED"
   paymentId       String? // id do pagamento no provedor (Mercado Pago)
   paymentDiscount Float   @default(0)
   paymentExpiresAt DateTime? // prazo do Pix (15min) — expirado e não pago = cancelado
