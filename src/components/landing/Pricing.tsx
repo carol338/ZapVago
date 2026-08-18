@@ -34,6 +34,11 @@ export function Pricing() {
   return (
     <section id="planos" className="mx-auto max-w-6xl px-4 py-20">
       <FadeIn>
+        <div className="mb-4 flex justify-center">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-zap/10 px-3 py-1.5 text-xs font-semibold text-zap-light">
+            🚀 Lançamento 2026 — Preço promocional
+          </span>
+        </div>
         <h2 className="text-center text-3xl font-bold sm:text-4xl">Planos e preços</h2>
         <p className="mx-auto mt-3 max-w-xl text-center text-foreground/60">Comece grátis. Cresça no seu ritmo.</p>
       </FadeIn>

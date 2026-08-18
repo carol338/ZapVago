@@ -13,8 +13,10 @@ import { ComparisonTable } from "@/components/landing/ComparisonTable";
 import { Pricing } from "@/components/landing/Pricing";
 import { PreFAQCTA } from "@/components/landing/PreFAQCTA";
 import { FAQSection } from "@/components/landing/FAQSection";
+import { FAQS } from "@/components/landing/faq-data";
 import { FinalCTA } from "@/components/landing/FinalCTA";
 import { LandingFooter } from "@/components/landing/LandingFooter";
+import { MobileFloatingCTA } from "@/components/landing/MobileFloatingCTA";
 
 const TITLE = "ZapVago — Agendamento Inteligente no WhatsApp para Salões, Barbearias e Clínicas";
 const DESCRIPTION =
@@ -57,10 +59,21 @@ const JSON_LD = {
   },
 };
 
+const FAQ_JSON_LD = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: FAQS.map((f) => ({
+    "@type": "Question",
+    name: f.q,
+    acceptedAnswer: { "@type": "Answer", text: f.a },
+  })),
+};
+
 export default function LandingPage() {
   return (
     <main className="min-h-screen bg-background">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(FAQ_JSON_LD) }} />
       <LandingHeader />
       <Hero />
       <SocialProof />
@@ -77,6 +90,7 @@ export default function LandingPage() {
       <FAQSection />
       <FinalCTA />
       <LandingFooter />
+      <MobileFloatingCTA />
     </main>
   );
 }

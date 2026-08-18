@@ -4,9 +4,12 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Zap, ArrowRight } from "lucide-react";
+import { endOfMonth, format } from "date-fns";
 import { FadeIn } from "./FadeIn";
 
 type Spots = { total: number; filled: number; remaining: number; active: boolean };
+
+const OFFER_DEADLINE = format(endOfMonth(new Date()), "dd/MM");
 
 export function LaunchOfferBanner() {
   const [spots, setSpots] = useState<Spots | null>(null);
@@ -48,6 +51,7 @@ export function LaunchOfferBanner() {
           Teste grátis por 14 dias <span className="text-base font-normal text-foreground/50">(em vez de 7)</span>
         </p>
         <p className="mt-2 text-sm text-foreground/60">Apenas {spots.total} vagas para novos negócios</p>
+        <p className="text-xs text-orange-400">Oferta válida até {OFFER_DEADLINE}</p>
 
         <div className="mx-auto mt-4 max-w-xs">
           <div className="h-2 overflow-hidden rounded-full bg-surface-hover">

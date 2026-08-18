@@ -12,10 +12,10 @@ const STATS = [
 ];
 
 const SEGMENTOS = [
-  { icon: Scissors, label: "Barbearias" },
-  { icon: Sparkles, label: "Salões" },
-  { icon: Stethoscope, label: "Clínicas" },
-  { icon: PawPrint, label: "Pet Shops" },
+  { icon: Scissors, label: "Barbearias", exemplos: "Corte, barba, sobrancelha" },
+  { icon: Sparkles, label: "Salões", exemplos: "Escova, coloração, luzes" },
+  { icon: Stethoscope, label: "Clínicas", exemplos: "Limpeza de pele, botox, peeling" },
+  { icon: PawPrint, label: "Pet Shops", exemplos: "Banho, tosa, hidratação" },
 ];
 
 const SELOS = [
@@ -55,9 +55,10 @@ export function SocialProof() {
             <p className="text-sm text-foreground/50">Usado por barbearias, salões, clínicas e pet shops</p>
             <div className="mt-6 flex flex-wrap items-center justify-center gap-x-10 gap-y-5">
               {SEGMENTOS.map((s) => (
-                <div key={s.label} className="flex flex-col items-center gap-1.5 text-foreground/60">
+                <div key={s.label} className="flex max-w-[110px] flex-col items-center gap-1.5 text-foreground/60">
                   <s.icon size={22} />
-                  <span className="text-xs font-medium">{s.label}</span>
+                  <span className="text-xs font-medium text-foreground">{s.label}</span>
+                  <span className="text-[11px] leading-tight text-foreground/45">{s.exemplos}</span>
                 </div>
               ))}
             </div>

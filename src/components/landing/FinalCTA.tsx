@@ -1,12 +1,14 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Check } from "lucide-react";
+import { Check, Lock } from "lucide-react";
+import { endOfMonth, format } from "date-fns";
 import { FadeIn } from "./FadeIn";
 import { RemainingSpotsLine } from "./RemainingSpotsLine";
 
-const CHECKS = ["14 dias grátis", "Sem cartão de crédito", "Cancele quando quiser"];
-
 export function FinalCTA() {
+  const offerDeadline = format(endOfMonth(new Date()), "dd/MM");
+  const CHECKS = [`14 dias grátis (oferta válida até ${offerDeadline})`, "Sem cartão de crédito", "Cancele quando quiser"];
+
   return (
     <section className="relative overflow-hidden border-t border-surface-border">
       <div
@@ -28,6 +30,9 @@ export function FinalCTA() {
           ))}
         </div>
         <RemainingSpotsLine />
+        <p className="mt-4 flex items-center justify-center gap-1.5 text-sm text-foreground/50">
+          <Lock size={14} className="text-zap-light" /> Seus dados protegidos pela LGPD
+        </p>
       </FadeIn>
     </section>
   );
