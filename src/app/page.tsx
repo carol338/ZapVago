@@ -71,7 +71,8 @@ const FAQ_JSON_LD = {
 
 export default function LandingPage() {
   return (
-    <main className="min-h-screen bg-background">
+    // "dark" fixo: a LP não deve seguir a preferência de tema (localStorage) usada no /dashboard.
+    <main className="dark min-h-screen bg-background text-foreground" style={{ colorScheme: "dark" }}>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(FAQ_JSON_LD) }} />
       <LandingHeader />
