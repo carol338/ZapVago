@@ -5,6 +5,7 @@ import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 
 export const authOptions: NextAuthOptions = {
   session: { strategy: "jwt" },
@@ -18,8 +19,22 @@ export const authOptions: NextAuthOptions = {
         email: { label: "Email", type: "email" },
         password: { label: "Senha", type: "password" },
       },
-      async authorize(credentials) {
+      async authorize(credentials, req) {
         if (!credentials?.email || !credentials?.password) return null;
+
+        // Não há uma rota /api/auth/login própria — o login passa inteiro por
+        // aqui (POST /api/auth/callback/credentials), então é aqui que o rate
+        // limit de login precisa entrar, não numa rota que não existe.
+        const ip = getClientIp(req.headers);
+        const ipCheck = await checkRateLimit(`login:ip:${ip}`, 10, 15 * 60);
+        if (!ipCheck.allowed) {
+          throw new Error("Muitas tentativas de login. Aguarde alguns minutos e tente novamente.");
+        }
+
+        const emailCheck = await checkRateLimit(`login:email:${credentials.email.toLowerCase().trim()}`, 5, 15 * 60);
+        if (!emailCheck.allowed) {
+          throw new Error("Muitas tentativas para este e-mail. Aguarde alguns minutos e tente novamente.");
+        }
 
         const owner = await prisma.owner.findUnique({
           where: { email: credentials.email },

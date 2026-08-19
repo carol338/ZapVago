@@ -10,8 +10,15 @@ import { addMinutes } from "date-fns";
 import { notifyClientConfirmed } from "@/lib/booking";
 import { parseLocalDate } from "@/lib/utils";
 import { tryRedeemLoyaltyReward } from "@/lib/loyalty";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 
 export async function POST(req: NextRequest) {
+  const ip = getClientIp(req.headers);
+  const ipCheck = await checkRateLimit(`appointments:ip:${ip}`, 10, 60 * 60);
+  if (!ipCheck.allowed) {
+    return NextResponse.json({ error: "Muitas tentativas de agendamento. Tente novamente em alguns minutos." }, { status: 429 });
+  }
+
   const body = await req.json();
   const { token, serviceId, professionalId, date, time, paymentMethod, flashSaleId } = body as {
     token: string;
@@ -33,6 +40,13 @@ export async function POST(req: NextRequest) {
   }
   if (!bookingToken.client) {
     return NextResponse.json({ error: "Esse link não está associado a um cliente." }, { status: 400 });
+  }
+
+  // Limite por telefone só entra depois de resolver o client via bookingToken
+  // (o telefone não vem direto do corpo da requisição, é o do cliente dono do link).
+  const phoneCheck = await checkRateLimit(`appointments:phone:${bookingToken.client.phone}`, 3, 60 * 60);
+  if (!phoneCheck.allowed) {
+    return NextResponse.json({ error: "Muitos agendamentos para esse número em pouco tempo. Tente novamente em alguns minutos." }, { status: 429 });
   }
 
   const service = await prisma.service.findUnique({ where: { id: serviceId } });

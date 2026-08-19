@@ -5,7 +5,7 @@ import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { checkRateLimit } from "@/lib/rate-limit";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import { fillLaunchOfferSpot } from "@/lib/launch-offer";
 
 const schema = z.object({
@@ -27,9 +27,9 @@ function slugify(name: string) {
 }
 
 export async function POST(req: NextRequest) {
-  const ip = req.headers.get("x-forwarded-for") ?? "unknown";
-  const { allowed } = checkRateLimit(`register:${ip}`);
-  if (!allowed) return NextResponse.json({ error: "Muitas tentativas, aguarde um pouco." }, { status: 429 });
+  const ip = getClientIp(req.headers);
+  const { allowed } = await checkRateLimit(`register:ip:${ip}`, 5, 60 * 60);
+  if (!allowed) return NextResponse.json({ error: "Muitas tentativas de cadastro. Tente novamente em 1 hora." }, { status: 429 });
 
   try {
     const body = schema.parse(await req.json());
