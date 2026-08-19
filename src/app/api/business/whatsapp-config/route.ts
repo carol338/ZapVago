@@ -1,58 +1,63 @@
 /**
- * PUT /api/business/whatsapp-config — conecta o WhatsApp Business real do
- * negócio (Etapa 2 do onboarding). Salva phoneNumberId/accessToken em
- * Business.whatsappProviderConfig — é isso que sendWhatsAppMessage() usa
- * pra enviar em nome desse negócio específico, e que o webhook usa pra
- * descobrir qual negócio recebeu uma mensagem.
+ * GET  /api/business/whatsapp-config — status da conexão (nunca retorna o
+ *      accessToken pro frontend, só se está conectado e qual phoneNumberId).
+ * POST /api/business/whatsapp-config — salva phoneNumberId/accessToken em
+ *      Business.whatsappProviderConfig e marca whatsappConnected = true.
+ *      É isso que sendWhatsAppMessage() usa pra enviar em nome desse
+ *      negócio específico, e que o webhook usa pra descobrir qual negócio
+ *      recebeu uma mensagem. Testar se as credenciais realmente funcionam
+ *      é responsabilidade de POST /api/business/whatsapp-test, separado
+ *      de propósito — dá pra salvar e testar de novo depois sem reenviar
+ *      o token toda vez.
  */
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireBusinessId } from "@/lib/api-auth";
-import { sendWhatsAppMessage } from "@/lib/whatsapp";
 
 const schema = z.object({
-  phoneNumberId: z.string().trim().min(1, "Phone Number ID é obrigatório."),
-  accessToken: z.string().trim().min(1, "Token de acesso é obrigatório."),
+  phoneNumberId: z
+    .string()
+    .trim()
+    .min(1, "Phone Number ID é obrigatório.")
+    .regex(/^\d+$/, "Phone Number ID deve conter apenas números."),
+  accessToken: z
+    .string()
+    .trim()
+    .min(1, "Token de acesso é obrigatório.")
+    .min(20, "Token de acesso muito curto — confira se copiou o token completo."),
 });
 
-export async function PUT(req: NextRequest) {
+export async function GET() {
+  const businessId = await requireBusinessId();
+  if (businessId instanceof NextResponse) return businessId;
+
+  const business = await prisma.business.findUnique({
+    where: { id: businessId },
+    select: { whatsappConnected: true, whatsappProviderConfig: true },
+  });
+  const config = business?.whatsappProviderConfig as { phoneNumberId?: string } | null;
+
+  return NextResponse.json({
+    connected: !!business?.whatsappConnected,
+    phoneNumberId: config?.phoneNumberId ?? null,
+  });
+}
+
+export async function POST(req: NextRequest) {
   const businessId = await requireBusinessId();
   if (businessId instanceof NextResponse) return businessId;
 
   const parsed = schema.safeParse(await req.json().catch(() => ({})));
   if (!parsed.success) {
-    return NextResponse.json({ error: "Dados inválidos.", details: parsed.error.issues }, { status: 400 });
+    return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Dados inválidos.", details: parsed.error.issues }, { status: 400 });
   }
   const { phoneNumberId, accessToken } = parsed.data;
 
-  const owner = await prisma.owner.findUnique({ where: { businessId } });
-  if (!owner) {
-    return NextResponse.json({ error: "Dono não encontrado." }, { status: 404 });
-  }
-
   await prisma.business.update({
     where: { id: businessId },
-    data: { whatsappProviderConfig: { phoneNumberId, accessToken } },
+    data: { whatsappProviderConfig: { phoneNumberId, accessToken }, whatsappConnected: true },
   });
 
-  // Manda uma mensagem de teste pro próprio dono, já usando as credenciais
-  // recém-salvas (sendWhatsAppMessage busca por businessId no banco) — é a
-  // única forma real de confirmar que o Phone Number ID/token funcionam.
-  const test = await sendWhatsAppMessage(owner.phone, "✅ ZapVago conectado! A partir de agora, seus clientes podem agendar direto pelo WhatsApp.", businessId);
-
-  if (!test.success) {
-    console.error(`[api/business/whatsapp-config] Mensagem de teste falhou para o negócio ${businessId}:`, test.error);
-    return NextResponse.json(
-      {
-        saved: true,
-        testMessageSent: false,
-        error: "As credenciais foram salvas, mas não consegui enviar a mensagem de teste. Confira o Phone Number ID e o token de acesso.",
-        details: test.error,
-      },
-      { status: 502 }
-    );
-  }
-
-  return NextResponse.json({ saved: true, testMessageSent: true, mocked: test.mocked });
+  return NextResponse.json({ saved: true });
 }

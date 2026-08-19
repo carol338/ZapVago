@@ -1,5 +1,6 @@
 import { BusinessSettings } from "@/components/shared/BusinessSettings";
 import { NotificationSettings } from "@/components/shared/NotificationSettings";
+import { WhatsAppSettings } from "@/components/shared/WhatsAppSettings";
 import { Breadcrumbs } from "@/components/shared/Breadcrumbs";
 
 export default function SettingsPage() {
@@ -8,6 +9,7 @@ export default function SettingsPage() {
       <Breadcrumbs items={[{ label: "Dashboard", href: "/dashboard" }, { label: "Configurações" }]} />
       <h1 className="mb-4 text-2xl font-bold">Configurações</h1>
       <div className="space-y-4">
+        <WhatsAppSettings />
         <BusinessSettings />
         <NotificationSettings />
       </div>
