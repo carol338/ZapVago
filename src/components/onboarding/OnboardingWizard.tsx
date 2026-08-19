@@ -83,24 +83,45 @@ export function OnboardingWizard({ category }: { category: string }) {
 
   async function connectWhatsApp() {
     setWhatsappError(null);
-    if (!phoneNumberId.trim() || !accessToken.trim()) {
+
+    const phoneId = phoneNumberId.trim();
+    const token = accessToken.trim();
+    if (!phoneId || !token) {
       setWhatsappError("Preencha o Phone Number ID e o token de acesso.");
+      return;
+    }
+    if (!/^\d+$/.test(phoneId)) {
+      setWhatsappError("Phone Number ID deve conter apenas números.");
+      return;
+    }
+    if (token.length < 20) {
+      setWhatsappError("Token de acesso muito curto — confira se copiou o token completo.");
       return;
     }
 
     setWhatsappStatus("connecting");
     try {
-      const res = await fetch("/api/business/whatsapp-config", {
-        method: "PUT",
+      const saveRes = await fetch("/api/business/whatsapp-config", {
+        method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phoneNumberId: phoneNumberId.trim(), accessToken: accessToken.trim() }),
+        body: JSON.stringify({ phoneNumberId: phoneId, accessToken: token }),
       });
-      const data = await res.json();
-      if (!res.ok) {
-        setWhatsappError(data.error ?? "Não foi possível conectar. Confira os dados e tente novamente.");
+      const saveData = await saveRes.json();
+      if (!saveRes.ok) {
+        setWhatsappError(saveData.error ?? "Não foi possível salvar. Confira os dados e tente novamente.");
         setWhatsappStatus("idle");
         return;
       }
+
+      // Salvo — agora testa de verdade mandando uma mensagem pro WhatsApp do dono.
+      const testRes = await fetch("/api/business/whatsapp-test", { method: "POST" });
+      const testData = await testRes.json();
+      if (!testRes.ok) {
+        setWhatsappError(testData.error ?? "Credenciais salvas, mas o teste de conexão falhou. Confira os dados e tente novamente.");
+        setWhatsappStatus("idle");
+        return;
+      }
+
       setWhatsappStatus("connected");
     } catch {
       setWhatsappError("Erro de rede ao tentar conectar. Tente novamente.");
@@ -235,15 +256,25 @@ export function OnboardingWizard({ category }: { category: string }) {
           )}
 
           {whatsappStatus !== "connected" ? (
-            <Button onClick={connectWhatsApp} disabled={whatsappStatus === "connecting"} className="w-full">
-              {whatsappStatus === "connecting" ? (
-                <span className="flex items-center justify-center gap-2">
-                  <Loader2 className="animate-spin" size={16} /> Conectando...
-                </span>
-              ) : (
-                "Conectar"
-              )}
-            </Button>
+            <>
+              <Button onClick={connectWhatsApp} disabled={whatsappStatus === "connecting"} className="w-full">
+                {whatsappStatus === "connecting" ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <Loader2 className="animate-spin" size={16} /> Conectando...
+                  </span>
+                ) : (
+                  "Conectar"
+                )}
+              </Button>
+              <button
+                type="button"
+                onClick={() => setStep(3)}
+                disabled={whatsappStatus === "connecting"}
+                className="mt-3 w-full text-center text-sm text-foreground/50 hover:text-foreground/70 hover:underline"
+              >
+                Pular por enquanto — conectar depois em Configurações
+              </button>
+            </>
           ) : (
             <Button onClick={() => setStep(3)} className="w-full">Continuar</Button>
           )}

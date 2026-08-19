@@ -12,9 +12,19 @@ export async function GET() {
 
   const business = await prisma.business.findUnique({
     where: { id: businessId },
-    include: { owner: true, services: true, professionals: true },
+    include: {
+      // Nunca manda o hash de senha do dono pro frontend.
+      owner: { select: { id: true, name: true, email: true, phone: true, notifyOn: true, lastMonthlyReportAt: true } },
+      services: true,
+      professionals: true,
+    },
   });
-  return NextResponse.json(business);
+  if (!business) return NextResponse.json(business);
+
+  // whatsappProviderConfig guarda o accessToken real — nunca sai daqui, só o
+  // status/phoneNumberId (ver GET /api/business/whatsapp-config pra isso).
+  const { whatsappProviderConfig, ...safeBusiness } = business;
+  return NextResponse.json(safeBusiness);
 }
 
 export async function PUT(req: NextRequest) {
