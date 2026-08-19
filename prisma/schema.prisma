@@ -189,8 +189,12 @@ model Appointment {
   notes   String?
   source  Source   @default(WHATSAPP)
 
-  reminderSent24  Boolean @default(false)
-  reminderSent1   Boolean @default(false)
+  // "pending" (marcado antes de enviar, protege contra duplicata se o
+  // processo cair no meio) | "sent" | "failed" (WhatsApp recusou/caiu —
+  // reentra na próxima rodada do cron, diferente de "sent"). null = nunca
+  // tentado. Ver src/app/api/cron/reminders/route.ts.
+  reminderStatus24 String?
+  reminderStatus1  String?
   clientConfirmed Boolean @default(false)
   noShowPredicted Float   @default(0)
   upsellOffered   Boolean @default(false)
