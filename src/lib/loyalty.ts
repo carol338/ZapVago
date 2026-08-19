@@ -4,6 +4,7 @@
  * uma recompensa e retorna a regra aplicável, se houver.
  */
 import { prisma } from "@/lib/prisma";
+import { hasFeature } from "@/lib/plan-limits";
 
 export async function checkLoyaltyReward(businessId: string, clientLoyaltyPoints: number) {
   const rules = await prisma.loyaltyRule.findMany({
@@ -36,6 +37,10 @@ export async function tryRedeemLoyaltyReward(
   client: { id: string; loyaltyPoints: number },
   serviceId: string
 ): Promise<{ discountPercent: number; ruleId: string } | null> {
+  // Único ponto de aplicação de desconto de fidelidade — gatear aqui cobre
+  // WhatsApp, criação manual e página pública de uma vez só.
+  if (!(await hasFeature(businessId, "loyalty"))) return null;
+
   const rule = await prisma.loyaltyRule.findFirst({
     where: { businessId, active: true, rewardServiceId: serviceId, visitsRequired: { lte: client.loyaltyPoints } },
     orderBy: { visitsRequired: "desc" },

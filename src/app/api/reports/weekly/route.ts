@@ -2,12 +2,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireBusinessId } from "@/lib/api-auth";
+import { hasFeature } from "@/lib/plan-limits";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 export async function GET(req: NextRequest) {
   const businessId = await requireBusinessId();
   if (businessId instanceof NextResponse) return businessId;
+
+  if (!(await hasFeature(businessId, "advancedReports"))) {
+    return NextResponse.json({ error: "Relatórios avançados não estão disponíveis no seu plano." }, { status: 403 });
+  }
 
   const { searchParams } = new URL(req.url);
   const start = new Date(searchParams.get("start") ?? new Date());

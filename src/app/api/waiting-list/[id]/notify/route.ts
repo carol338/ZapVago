@@ -8,11 +8,16 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireBusinessId } from "@/lib/api-auth";
+import { hasFeature } from "@/lib/plan-limits";
 import { sendWhatsAppMessage } from "@/lib/whatsapp";
 
 export async function POST(_req: Request, { params }: { params: { id: string } }) {
   const businessId = await requireBusinessId();
   if (businessId instanceof NextResponse) return businessId;
+
+  if (!(await hasFeature(businessId, "waitingList"))) {
+    return NextResponse.json({ error: "Lista de espera não está disponível no seu plano." }, { status: 403 });
+  }
 
   const entry = await prisma.waitingListEntry.findFirst({
     where: { id: params.id, businessId },

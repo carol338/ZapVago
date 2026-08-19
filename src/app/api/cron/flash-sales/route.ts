@@ -17,6 +17,7 @@ import { prisma } from "@/lib/prisma";
 import { requireCronSecret } from "@/lib/cron-auth";
 import { sendWhatsAppMessage } from "@/lib/whatsapp";
 import { resolveFlashSaleAudience } from "@/lib/flash-sale-audience";
+import { hasFeature } from "@/lib/plan-limits";
 import { toZonedTime } from "date-fns-tz";
 
 // timeStart/timeEnd/daysOfWeek são configurados no horário LOCAL do negócio
@@ -56,6 +57,15 @@ async function dispatchDueFlashSales(req: NextRequest): Promise<NextResponse> {
     const business = await prisma.business.findUnique({ where: { id: flashSale.businessId } });
     if (!business) {
       console.error(`[cron/flash-sales] Feirão ${flashSale.id} sem negócio associado (businessId ${flashSale.businessId}) — pulado.`);
+      continue;
+    }
+
+    // Defesa extra: o negócio pode ter feito downgrade depois de agendar a
+    // campanha. Marca active=false sem enviar nada, pelo mesmo motivo do
+    // comentário acima (nunca mais reprocessar).
+    if (!(await hasFeature(flashSale.businessId, "flashSales"))) {
+      await prisma.flashSale.update({ where: { id: flashSale.id }, data: { active: false } });
+      console.log(`[cron/flash-sales] Feirão ${flashSale.id} pulado — negócio ${flashSale.businessId} não tem mais o plano com Feirão.`);
       continue;
     }
 

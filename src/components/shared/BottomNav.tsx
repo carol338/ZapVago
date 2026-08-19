@@ -4,16 +4,17 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { CalendarDays, MessageSquare, Users, BarChart3 } from "lucide-react";
+import type { Feature } from "@/lib/plan-limits";
 
-const ITEMS = [
+const ITEMS: { href: string; label: string; icon: typeof CalendarDays; feature?: Feature }[] = [
   { href: "/dashboard", label: "Agenda", icon: CalendarDays },
   { href: "/dashboard/conversations", label: "Conversas", icon: MessageSquare },
   { href: "/dashboard/clients", label: "Clientes", icon: Users },
-  { href: "/dashboard/reports", label: "Relatórios", icon: BarChart3 },
+  { href: "/dashboard/reports", label: "Relatórios", icon: BarChart3, feature: "advancedReports" },
 ];
 
 /** Menu fixo no rodapé, só em mobile — atalho para as 4 seções mais usadas. */
-export function BottomNav() {
+export function BottomNav({ features }: { features: Record<Feature, boolean> }) {
   const pathname = usePathname();
 
   return (
@@ -21,7 +22,7 @@ export function BottomNav() {
       className="fixed inset-x-0 bottom-0 z-30 flex h-[60px] items-stretch border-t border-surface-border bg-surface md:hidden"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
-      {ITEMS.map((item) => {
+      {ITEMS.filter((item) => !item.feature || features[item.feature]).map((item) => {
         const active = pathname === item.href;
         return (
           <Link

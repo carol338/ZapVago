@@ -155,13 +155,23 @@ export function OnboardingWizard({ category }: { category: string }) {
         body: JSON.stringify(s),
       });
     }
+    let skippedProfessionals = 0;
     for (const p of professionals) {
       if (!p.name) continue;
-      await fetch("/api/professionals", {
+      const res = await fetch("/api/professionals", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(p),
       });
+      // No plano Grátis (padrão de toda conta nova), só 1 profissional é
+      // permitido — a API bloqueia com 403 a partir do 2º. Sem isso, os
+      // extras seriam descartados em silêncio sem o dono nunca saber.
+      if (!res.ok) skippedProfessionals += 1;
+    }
+    if (skippedProfessionals > 0) {
+      alert(
+        `${skippedProfessionals} profissional(is) não foram adicionados — o plano Grátis permite até 1. Você pode adicionar mais depois de fazer upgrade em Configurações.`
+      );
     }
 
     router.push("/dashboard");

@@ -20,6 +20,7 @@ model Business {
   timezone               String    @default("America/Sao_Paulo")
   whatsappConnected      Boolean   @default(false)
   whatsappProviderConfig Json?
+  plan                   Plan      @default(FREE) // limites/features em src/lib/plan-limits.ts
 
   // Página pública (vitrine do negócio)
   logo           String?
@@ -225,6 +226,12 @@ model BookingToken {
   createdAt DateTime  @default(now())
 
   @@index([businessId])
+}
+
+enum Plan {
+  FREE
+  PRO
+  BUSINESS
 }
 
 enum Category {
