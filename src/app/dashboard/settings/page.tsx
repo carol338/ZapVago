@@ -1,6 +1,7 @@
 import { BusinessSettings } from "@/components/shared/BusinessSettings";
 import { NotificationSettings } from "@/components/shared/NotificationSettings";
 import { WhatsAppSettings } from "@/components/shared/WhatsAppSettings";
+import { PrivacySettings } from "@/components/shared/PrivacySettings";
 import { Breadcrumbs } from "@/components/shared/Breadcrumbs";
 
 export default function SettingsPage() {
@@ -12,6 +13,7 @@ export default function SettingsPage() {
         <WhatsAppSettings />
         <BusinessSettings />
         <NotificationSettings />
+        <PrivacySettings />
       </div>
     </div>
   );

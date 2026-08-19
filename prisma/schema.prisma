@@ -65,7 +65,20 @@ model Owner {
 
   lastMonthlyReportAt DateTime? // usado pra reconhecer resposta "sim"/"feirão" ao relatório mensal
 
+  // LGPD — comprovação de consentimento (Art. 8º).
+  consentTermsAt      DateTime? // aceite dos Termos de Uso + Política de Privacidade no cadastro
+  consentMarketing     Boolean   @default(false) // opcional: autoriza comunicações sobre o produto
+  dataProcessingAckAt DateTime? // ciência, no onboarding, de que trata dados pessoais de clientes finais
+
   createdAt DateTime @default(now())
+}
+
+// LGPD Art. 18, VI — registro de que uma conta foi excluída a pedido do
+// titular, sem nenhum dado pessoal (só a data), pra fins de auditoria interna
+// (ex: comprovar atendimento ao pedido em caso de reclamação na ANPD).
+model AccountDeletionLog {
+  id        String   @id @default(cuid())
+  deletedAt DateTime @default(now())
 }
 
 model Service {

@@ -32,18 +32,24 @@ export default function RegisterPage() {
     email: "",
     password: "",
   });
+  const [consentTerms, setConsentTerms] = useState(false);
+  const [consentMarketing, setConsentMarketing] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+    if (!consentTerms) {
+      setError("É preciso aceitar os Termos de Uso e a Política de Privacidade para continuar.");
+      return;
+    }
     setLoading(true);
     try {
       const res = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ ...form, consentTerms, consentMarketing }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -95,8 +101,34 @@ export default function RegisterPage() {
             <Label htmlFor="password">Senha</Label>
             <Input id="password" type="password" minLength={6} required value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
           </div>
+          <div className="space-y-2 pt-1">
+            <label className="flex items-start gap-2 text-sm text-foreground/70">
+              <input
+                type="checkbox"
+                required
+                checked={consentTerms}
+                onChange={(e) => setConsentTerms(e.target.checked)}
+                className="mt-0.5 h-4 w-4 shrink-0 rounded border-surface-border"
+              />
+              <span>
+                Concordo com os{" "}
+                <Link href="/terms" target="_blank" className="text-zap-light hover:underline">Termos de Uso</Link>{" "}
+                e a{" "}
+                <Link href="/privacy" target="_blank" className="text-zap-light hover:underline">Política de Privacidade</Link>
+              </span>
+            </label>
+            <label className="flex items-start gap-2 text-sm text-foreground/70">
+              <input
+                type="checkbox"
+                checked={consentMarketing}
+                onChange={(e) => setConsentMarketing(e.target.checked)}
+                className="mt-0.5 h-4 w-4 shrink-0 rounded border-surface-border"
+              />
+              <span>Autorizo o envio de comunicações sobre o produto</span>
+            </label>
+          </div>
           {error && <p className="text-sm text-risk-high">{error}</p>}
-          <Button type="submit" className="w-full" disabled={loading}>
+          <Button type="submit" className="w-full" disabled={loading || !consentTerms}>
             {loading ? "Criando conta..." : "Criar conta grátis"}
           </Button>
         </form>

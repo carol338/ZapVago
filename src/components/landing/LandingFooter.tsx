@@ -45,9 +45,12 @@ export function LandingFooter() {
           </div>
         </div>
 
-        <p className="mt-8 text-center text-sm text-foreground/40">
-          © {new Date().getFullYear()} ZapVago. Todos os direitos reservados.
-        </p>
+        <div className="mt-8 flex flex-col items-center gap-2 text-center text-sm text-foreground/40">
+          <p>© {new Date().getFullYear()} ZapVago. Todos os direitos reservados.</p>
+          <Link href="/privacy" className="flex items-center gap-1 hover:text-foreground/70">
+            🔒 Conforme LGPD
+          </Link>
+        </div>
       </div>
     </footer>
   );
