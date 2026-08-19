@@ -8,9 +8,9 @@ const LINKS = [
 ];
 
 const SOCIAL = [
-  { icon: Instagram, label: "Instagram", href: "#" },
-  { icon: Linkedin, label: "LinkedIn", href: "#" },
-  { icon: Youtube, label: "YouTube", href: "#" },
+  { icon: Instagram, label: "Instagram", href: "https://instagram.com/zapvago" },
+  { icon: Linkedin, label: "LinkedIn", href: "https://linkedin.com/company/zapvago" },
+  { icon: Youtube, label: "YouTube", href: "https://youtube.com/@zapvago" },
 ];
 
 export function LandingFooter() {
@@ -31,13 +31,15 @@ export function LandingFooter() {
             ))}
           </nav>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center justify-center gap-6">
             {SOCIAL.map((s) => (
               <a
                 key={s.label}
                 href={s.href}
+                target="_blank"
+                rel="noopener noreferrer"
                 aria-label={s.label}
-                className="flex h-9 w-9 items-center justify-center rounded-lg text-foreground/50 transition-colors hover:bg-surface-hover hover:text-foreground"
+                className="flex h-9 w-9 items-center justify-center rounded-lg text-foreground/50 transition-colors duration-200 hover:bg-surface-hover hover:text-zap"
               >
                 <s.icon size={17} />
               </a>
