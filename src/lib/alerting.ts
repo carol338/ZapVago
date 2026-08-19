@@ -14,6 +14,7 @@
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { subHours } from "date-fns";
+import * as Sentry from "@sentry/nextjs";
 
 export type IntegrationService = "whatsapp" | "mercadopago" | "claude" | "cron";
 
@@ -40,6 +41,15 @@ export async function alertFailure({ service, businessId, error, context }: Aler
 
   await prisma.integrationFailure.create({
     data: { businessId, service, error, context: (context ?? undefined) as Prisma.InputJsonValue | undefined },
+  });
+
+  // Essas falhas já são tratadas graciosamente pelas libs (sendWhatsAppMessage,
+  // payments.ts, claude.ts nunca deixam o erro subir até a rota) — a captura
+  // automática do Sentry na rota não veria nada, então reporta explicitamente
+  // aqui, com o mesmo businessId/service que já vão pro IntegrationFailure.
+  Sentry.captureException(new Error(`[${service}] ${error}`), {
+    tags: { businessId, service },
+    extra: context,
   });
 
   // Só escala exatamente na 3ª falha da janela — evita reenviar o mesmo
