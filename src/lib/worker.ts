@@ -32,10 +32,14 @@ new Worker(
 
     const quando = type === "24h" ? "amanhã" : "em 1 hora";
     const msg = `Oi ${appointment.client.name.split(" ")[0]}! Lembrando do seu ${appointment.service.name} ${quando} com ${appointment.professional.name} 💈 Confirma presença?`;
-    await sendWhatsAppMessage(appointment.client.phone, msg, appointment.businessId);
+    const field = type === "24h" ? "reminderStatus24" : "reminderStatus1";
 
-    const field = type === "24h" ? { reminderSent24: true } : { reminderSent1: true };
-    await prisma.appointment.update({ where: { id: appointmentId }, data: field });
+    // Mesma idempotência do cron serverless (ver src/app/api/cron/reminders/route.ts):
+    // marca "pending" antes de enviar, "sent"/"failed" depois — nunca marca
+    // enviado sem confirmar que o envio deu certo.
+    await prisma.appointment.update({ where: { id: appointmentId }, data: { [field]: "pending" } });
+    const result = await sendWhatsAppMessage(appointment.client.phone, msg, appointment.businessId);
+    await prisma.appointment.update({ where: { id: appointmentId }, data: { [field]: result.success ? "sent" : "failed" } });
   },
   { connection }
 );
