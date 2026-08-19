@@ -28,6 +28,7 @@ import {
 } from "@/lib/waiting-list";
 import { handleOwnerReply, isOwnerPhone } from "@/lib/owner-actions";
 import { notifyOwner } from "@/lib/notify";
+import { canCreateAppointment, hasFeature } from "@/lib/plan-limits";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -242,6 +243,21 @@ async function executeAction(businessId: string, client: any, clientPhone: strin
       });
       if (conflict) return; // Claude deveria ter oferecido apenas horários livres
 
+      const planLimit = await canCreateAppointment(businessId);
+      if (!planLimit.allowed) {
+        await sendWhatsAppMessage(
+          clientPhone,
+          "Ih, desculpa! Não consigo agendar automaticamente agora — chegamos no limite de agendamentos desse mês. Vou te transferir pro dono, ele resolve rapidinho.",
+          businessId
+        );
+        await notifyOwner(
+          businessId,
+          "humanRequested",
+          `🚫 Não consegui agendar automaticamente pra ${existingClient.name}: o plano Grátis atingiu o limite de ${planLimit.limit} agendamentos/mês. Faça upgrade em Configurações pra liberar agendamentos ilimitados.`
+        );
+        return;
+      }
+
       const noShowPredicted = calculateNoShowRisk({
         client: existingClient,
         clientConfirmed: false,
@@ -320,6 +336,15 @@ async function executeAction(businessId: string, client: any, clientPhone: strin
     }
     case "add_to_waiting_list": {
       if (!client || !data.serviceId || !data.preferredDate) return;
+      if (!(await hasFeature(businessId, "waitingList"))) {
+        await sendWhatsAppMessage(
+          clientPhone,
+          "Ih, desculpa! Não temos lista de espera disponível no momento. Vou te transferir pro dono, ele resolve rapidinho.",
+          businessId
+        );
+        await notifyOwner(businessId, "humanRequested", `🙋 ${client.name} queria entrar na lista de espera, mas o plano atual não inclui essa funcionalidade.`);
+        return;
+      }
       await prisma.waitingListEntry.create({
         data: {
           businessId,

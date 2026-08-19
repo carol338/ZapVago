@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireBusinessId } from "@/lib/api-auth";
+import { hasFeature } from "@/lib/plan-limits";
 
 export async function GET() {
   const businessId = await requireBusinessId();
@@ -33,6 +34,10 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   const businessId = await requireBusinessId();
   if (businessId instanceof NextResponse) return businessId;
+
+  if (!(await hasFeature(businessId, "flashSales"))) {
+    return NextResponse.json({ error: "Feirão não está disponível no seu plano. Faça upgrade para liberar." }, { status: 403 });
+  }
 
   const body = await req.json();
   const flashSale = await prisma.flashSale.create({

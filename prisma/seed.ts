@@ -5,7 +5,7 @@
  *
  * Rodar com: npm run db:seed
  */
-import { PrismaClient, Category, Status, Source } from "@prisma/client";
+import { PrismaClient, Category, Status, Source, Plan } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { addDays, addMinutes, subDays, setHours, setMinutes } from "date-fns";
 
@@ -45,6 +45,7 @@ async function main() {
     data: {
       name: "Barbearia do Zé",
       slug: "barbearia-do-ze",
+      plan: Plan.BUSINESS,
       category: Category.BARBER,
       phone: "5511988887777",
       address: "Rua das Tesouras, 123 - São Paulo, SP",

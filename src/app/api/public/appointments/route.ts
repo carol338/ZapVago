@@ -11,6 +11,7 @@ import { notifyClientConfirmed } from "@/lib/booking";
 import { parseLocalDate } from "@/lib/utils";
 import { tryRedeemLoyaltyReward } from "@/lib/loyalty";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
+import { canCreateAppointment } from "@/lib/plan-limits";
 
 export async function POST(req: NextRequest) {
   const ip = getClientIp(req.headers);
@@ -40,6 +41,14 @@ export async function POST(req: NextRequest) {
   }
   if (!bookingToken.client) {
     return NextResponse.json({ error: "Esse link não está associado a um cliente." }, { status: 400 });
+  }
+
+  const planLimit = await canCreateAppointment(bookingToken.businessId);
+  if (!planLimit.allowed) {
+    return NextResponse.json(
+      { error: "Esse negócio atingiu o limite de agendamentos do mês. Tente novamente em breve ou entre em contato diretamente." },
+      { status: 403 }
+    );
   }
 
   // Limite por telefone só entra depois de resolver o client via bookingToken

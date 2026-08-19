@@ -10,6 +10,7 @@ import { addMinutes, startOfWeek, endOfWeek, startOfDay, endOfDay } from "date-f
 import { calculateNoShowRisk } from "@/lib/noshow";
 import { scheduleReminders } from "@/lib/queue";
 import { tryRedeemLoyaltyReward } from "@/lib/loyalty";
+import { canCreateAppointment } from "@/lib/plan-limits";
 
 export async function GET(req: NextRequest) {
   const businessId = await requireBusinessId();
@@ -42,6 +43,14 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const businessId = await requireBusinessId();
   if (businessId instanceof NextResponse) return businessId;
+
+  const limitCheck = await canCreateAppointment(businessId);
+  if (!limitCheck.allowed) {
+    return NextResponse.json(
+      { error: `Limite de ${limitCheck.limit} agendamentos/mês do plano Grátis atingido. Faça upgrade para agendar ilimitado.`, planLimit: limitCheck },
+      { status: 403 }
+    );
+  }
 
   const body = await req.json();
   const { clientName, clientPhone, serviceId, professionalId, date } = body;

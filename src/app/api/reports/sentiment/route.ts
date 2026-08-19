@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireBusinessId } from "@/lib/api-auth";
+import { hasFeature } from "@/lib/plan-limits";
 import { subDays } from "date-fns";
 
 function pct(count: number, total: number) {
@@ -11,6 +12,10 @@ function pct(count: number, total: number) {
 export async function GET(req: NextRequest) {
   const businessId = await requireBusinessId();
   if (businessId instanceof NextResponse) return businessId;
+
+  if (!(await hasFeature(businessId, "sentiment"))) {
+    return NextResponse.json({ error: "Painel de sentimentos não está disponível no seu plano." }, { status: 403 });
+  }
 
   const { searchParams } = new URL(req.url);
   const period = Number(searchParams.get("period") ?? 30);

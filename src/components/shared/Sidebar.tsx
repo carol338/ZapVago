@@ -20,22 +20,31 @@ import {
   ListTodo,
 } from "lucide-react";
 import { ThemeToggle } from "./ThemeToggle";
+import type { Feature } from "@/lib/plan-limits";
 
-const NAV = [
+const NAV: { href: string; label: string; icon: typeof CalendarDays; feature?: Feature }[] = [
   { href: "/dashboard", label: "Agenda", icon: CalendarDays },
   { href: "/dashboard/conversations", label: "Conversas", icon: MessageSquare },
   { href: "/dashboard/clients", label: "Clientes", icon: Users },
-  { href: "/dashboard/waiting-list", label: "Lista de Espera", icon: ListTodo },
-  { href: "/dashboard/reports", label: "Relatórios", icon: BarChart3 },
-  { href: "/dashboard/flash-sales", label: "Feirões", icon: Zap },
-  { href: "/dashboard/loyalty", label: "Fidelidade", icon: Gift },
+  { href: "/dashboard/waiting-list", label: "Lista de Espera", icon: ListTodo, feature: "waitingList" },
+  { href: "/dashboard/reports", label: "Relatórios", icon: BarChart3, feature: "advancedReports" },
+  { href: "/dashboard/flash-sales", label: "Feirões", icon: Zap, feature: "flashSales" },
+  { href: "/dashboard/loyalty", label: "Fidelidade", icon: Gift, feature: "loyalty" },
   { href: "/dashboard/settings", label: "Configurações", icon: Settings },
 ];
 
-function NavList({ pathname, onNavigate }: { pathname: string; onNavigate?: () => void }) {
+function NavList({
+  pathname,
+  onNavigate,
+  features,
+}: {
+  pathname: string;
+  onNavigate?: () => void;
+  features: Record<Feature, boolean>;
+}) {
   return (
     <nav className="flex-1 space-y-2 p-3">
-      {NAV.map((item) => {
+      {NAV.filter((item) => !item.feature || features[item.feature]).map((item) => {
         const active = pathname === item.href;
         return (
           <Link
@@ -56,7 +65,7 @@ function NavList({ pathname, onNavigate }: { pathname: string; onNavigate?: () =
   );
 }
 
-export function Sidebar({ businessName }: { businessName?: string }) {
+export function Sidebar({ businessName, features }: { businessName?: string; features: Record<Feature, boolean> }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
 
@@ -110,7 +119,7 @@ export function Sidebar({ businessName }: { businessName?: string }) {
               </button>
             </div>
 
-            <NavList pathname={pathname} onNavigate={() => setOpen(false)} />
+            <NavList pathname={pathname} onNavigate={() => setOpen(false)} features={features} />
 
             <div className="border-t border-surface-border p-3">
               {businessName && <p className="mb-2 truncate px-3 text-xs text-foreground/50">{businessName}</p>}
@@ -136,7 +145,7 @@ export function Sidebar({ businessName }: { businessName?: string }) {
           <ThemeToggle className="flex h-9 w-9 items-center justify-center rounded-lg text-foreground/60 hover:bg-surface-hover hover:text-foreground" />
         </div>
 
-        <NavList pathname={pathname} />
+        <NavList pathname={pathname} features={features} />
 
         <div className="border-t border-surface-border p-3">
           {businessName && <p className="mb-2 truncate px-3 text-xs text-foreground/50">{businessName}</p>}

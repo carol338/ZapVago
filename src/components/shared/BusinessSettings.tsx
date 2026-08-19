@@ -6,10 +6,14 @@
  * serviços/profissionais.
  */
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { ArrowUpCircle } from "lucide-react";
+
+const PLAN_LABEL: Record<string, string> = { FREE: "Grátis", PRO: "Pro", BUSINESS: "Business" };
 
 const DIAS = [
   { key: "mon", label: "Segunda" },
@@ -47,6 +51,25 @@ export function BusinessSettings() {
 
   return (
     <div className="space-y-4">
+      <Card>
+        <CardHeader><CardTitle>Plano atual</CardTitle></CardHeader>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-lg font-bold text-zap-light">{PLAN_LABEL[business.plan] ?? business.plan}</p>
+            <p className="text-sm text-foreground/60">
+              {business.plan === "BUSINESS" ? "Você já tem acesso a todas as funcionalidades." : "Faça upgrade para desbloquear mais funcionalidades e limites maiores."}
+            </p>
+          </div>
+          {business.plan !== "BUSINESS" && (
+            <Link href="/#planos">
+              <Button size="sm">
+                <ArrowUpCircle size={16} className="mr-1" /> Fazer upgrade
+              </Button>
+            </Link>
+          )}
+        </div>
+      </Card>
+
       <Card>
         <CardHeader><CardTitle>Dados do negócio</CardTitle></CardHeader>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">

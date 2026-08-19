@@ -18,6 +18,7 @@ import { NewAppointmentModal } from "./NewAppointmentModal";
 import { AppointmentDetailModal, AppointmentDetail } from "./AppointmentDetailModal";
 import { FlashSaleModal } from "@/components/flash-sales/FlashSaleModal";
 import { cn, formatCurrency } from "@/lib/utils";
+import type { Feature } from "@/lib/plan-limits";
 
 const DIAS_LABEL = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
 const HORARIOS = Array.from({ length: 22 }, (_, i) => 8 + i * 0.5).filter((h) => h <= 19); // 08:00–19:00, passo 30min
@@ -26,7 +27,7 @@ function hourLabel(hour: number) {
   return `${String(Math.floor(hour)).padStart(2, "0")}:${hour % 1 === 0 ? "00" : "30"}`;
 }
 
-export function AgendaGrid() {
+export function AgendaGrid({ features }: { features: Record<Feature, boolean> }) {
   const [weekStart, setWeekStart] = useState(startOfWeek(new Date(), { weekStartsOn: 1 }));
   const [appointments, setAppointments] = useState<any[]>([]);
   const [services, setServices] = useState<any[]>([]);
@@ -115,7 +116,7 @@ export function AgendaGrid() {
       professionalColor: a.professional.color,
       price: a.price ?? a.service.price,
       status: a.status,
-      risk: a.noShowPredicted,
+      risk: features.noShowPrediction ? a.noShowPredicted : 0,
     };
   }
 
@@ -127,7 +128,7 @@ export function AgendaGrid() {
       service: a.service,
       professional: a.professional,
       status: a.status,
-      noShowPredicted: a.noShowPredicted,
+      noShowPredicted: features.noShowPrediction ? a.noShowPredicted : 0,
       price: a.price,
       loyaltyRewardApplied: a.loyaltyRewardApplied,
     });
@@ -153,7 +154,7 @@ export function AgendaGrid() {
     .reduce((s, a) => s + (a.price ?? a.service.price), 0);
   const comparecimentosHoje = todayAppointments.filter((a) => a.status === "COMPLETED").length;
   const faltasHoje = todayAppointments.filter((a) => a.status === "NO_SHOW").length;
-  const altoRiscoHoje = todayAppointments.filter((a) => a.noShowPredicted >= 0.5).length;
+  const altoRiscoHoje = features.noShowPrediction ? todayAppointments.filter((a) => a.noShowPredicted >= 0.5).length : 0;
   const slotsOciosos = HORARIOS.length - todayAppointments.length;
 
   return (
@@ -181,9 +182,11 @@ export function AgendaGrid() {
           <Button variant="secondary" size="sm" className="flex-1 sm:flex-none" onClick={() => window.print()}>
             <Printer size={16} className="mr-1" /> Exportar
           </Button>
-          <Button size="sm" className="flex-1 sm:flex-none" onClick={() => setFlashSaleOpen(true)}>
-            <Zap size={16} className="mr-1" /> Feirão
-          </Button>
+          {features.flashSales && (
+            <Button size="sm" className="flex-1 sm:flex-none" onClick={() => setFlashSaleOpen(true)}>
+              <Zap size={16} className="mr-1" /> Feirão
+            </Button>
+          )}
         </div>
       </div>
 
@@ -223,10 +226,12 @@ export function AgendaGrid() {
             <p className="text-xs text-foreground/50">❌ Faltas</p>
             <p className="text-xl font-bold text-risk-high">{faltasHoje}</p>
           </Card>
-          <Card>
-            <p className="text-xs text-foreground/50">⚠️ Riscos</p>
-            <p className="text-xl font-bold text-orange-400">{altoRiscoHoje}</p>
-          </Card>
+          {features.noShowPrediction && (
+            <Card>
+              <p className="text-xs text-foreground/50">⚠️ Riscos</p>
+              <p className="text-xl font-bold text-orange-400">{altoRiscoHoje}</p>
+            </Card>
+          )}
           <Card>
             <p className="text-xs text-foreground/50">Horários ociosos</p>
             <p className="text-xl font-bold">{Math.max(0, slotsOciosos)}</p>
