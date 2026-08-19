@@ -15,6 +15,10 @@ const schema = z.object({
   ownerName: z.string().min(2),
   email: z.string().email(),
   password: z.string().min(6),
+  // LGPD: aceite dos Termos + Privacidade é obrigatório — validado no servidor,
+  // não só no HTML, pra não confiar num checkbox que o cliente pode burlar.
+  consentTerms: z.boolean().refine((v) => v === true, { message: "É preciso aceitar os Termos de Uso e a Política de Privacidade." }),
+  consentMarketing: z.boolean().optional().default(false),
 });
 
 function slugify(name: string) {
@@ -59,6 +63,8 @@ export async function POST(req: NextRequest) {
             password: hashedPassword,
             phone: body.businessPhone,
             notifyOn: { newAppointment: true, weeklyReport: true, sentimentAlert: true, channel: "whatsapp" },
+            consentTermsAt: new Date(),
+            consentMarketing: body.consentMarketing,
           },
         },
       },

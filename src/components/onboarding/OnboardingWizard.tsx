@@ -80,6 +80,7 @@ export function OnboardingWizard({ category }: { category: string }) {
   // Etapa 4 — Serviços e profissionais
   const [services, setServices] = useState(TEMPLATES_SERVICOS[category] ?? []);
   const [professionals, setProfessionals] = useState<{ name: string; color: string }[]>([{ name: "", color: "#10B981" }]);
+  const [dataProcessingAck, setDataProcessingAck] = useState(false);
 
   async function connectWhatsApp() {
     setWhatsappError(null);
@@ -130,6 +131,12 @@ export function OnboardingWizard({ category }: { category: string }) {
   }
 
   async function finishOnboarding() {
+    await fetch("/api/owner/consent", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ack: true }),
+    });
+
     await fetch("/api/business/settings", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -433,9 +440,22 @@ export function OnboardingWizard({ category }: { category: string }) {
             </button>
           </div>
 
+          <label className="mb-4 flex items-start gap-2 text-sm text-foreground/70">
+            <input
+              type="checkbox"
+              checked={dataProcessingAck}
+              onChange={(e) => setDataProcessingAck(e.target.checked)}
+              className="mt-0.5 h-4 w-4 shrink-0 rounded border-surface-border"
+            />
+            <span>
+              Estou ciente de que o ZapVago armazena dados dos meus clientes para fins de agendamento e que sou
+              responsável pelo tratamento desses dados.
+            </span>
+          </label>
+
           <div className="flex gap-2">
             <Button variant="secondary" onClick={() => setStep(3)}>Voltar</Button>
-            <Button onClick={finishOnboarding} className="flex-1">Finalizar e ir para o painel</Button>
+            <Button onClick={finishOnboarding} disabled={!dataProcessingAck} className="flex-1">Finalizar e ir para o painel</Button>
           </div>
         </Card>
       )}
