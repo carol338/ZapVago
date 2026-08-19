@@ -5,8 +5,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { createPixCharge } from "@/lib/payments";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 
 export async function POST(req: NextRequest) {
+  const ip = getClientIp(req.headers);
+  const ipCheck = await checkRateLimit(`payments:pix:ip:${ip}`, 10, 60 * 60);
+  if (!ipCheck.allowed) {
+    return NextResponse.json({ error: "Muitas tentativas de pagamento. Tente novamente em alguns minutos." }, { status: 429 });
+  }
+
   const { appointmentId, token } = (await req.json()) as { appointmentId: string; token: string };
   if (!appointmentId || !token) {
     return NextResponse.json({ error: "appointmentId e token são obrigatórios." }, { status: 400 });

@@ -6,8 +6,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { chargeCard } from "@/lib/payments";
 import { confirmAppointmentPayment } from "@/lib/booking";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 
 export async function POST(req: NextRequest) {
+  const ip = getClientIp(req.headers);
+  const ipCheck = await checkRateLimit(`payments:card:ip:${ip}`, 10, 60 * 60);
+  if (!ipCheck.allowed) {
+    return NextResponse.json({ error: "Muitas tentativas de pagamento. Tente novamente em alguns minutos." }, { status: 429 });
+  }
+
   const { appointmentId, token, installments, cardToken, paymentMethodId } = (await req.json()) as {
     appointmentId: string;
     token: string;

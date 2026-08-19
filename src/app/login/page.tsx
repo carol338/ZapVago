@@ -24,7 +24,9 @@ export default function LoginPage() {
     const res = await signIn("credentials", { email, password, redirect: false });
     setLoading(false);
     if (res?.error) {
-      setError("Email ou senha inválidos.");
+      // "CredentialsSignin" é o código genérico do NextAuth pra credenciais
+      // erradas; qualquer outra coisa é uma mensagem nossa (ex: rate limit).
+      setError(res.error === "CredentialsSignin" ? "Email ou senha inválidos." : res.error);
       return;
     }
     router.push("/dashboard");
