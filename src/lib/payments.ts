@@ -11,6 +11,7 @@
  * direto do cliente.
  */
 import { isMockMode } from "@/lib/mock";
+import { alertFailure } from "@/lib/alerting";
 
 const MP_ACCESS_TOKEN = process.env.MERCADOPAGO_ACCESS_TOKEN;
 const MP_API_BASE = "https://api.mercadopago.com";
@@ -48,8 +49,12 @@ interface MercadoPagoErrorBody {
   cause?: { code: string | number; description: string }[];
 }
 
-/** POST /v1/payments na API do Mercado Pago, com log detalhado em caso de erro. */
-async function postPayment(body: Record<string, unknown>, context: Record<string, unknown>): Promise<any> {
+/**
+ * POST /v1/payments na API do Mercado Pago, com log detalhado em caso de
+ * erro. `context` sempre carrega businessId — é o que permite registrar a
+ * falha (IntegrationFailure) e, na 3ª falha na mesma hora, avisar o dono.
+ */
+async function postPayment(body: Record<string, unknown>, context: { businessId: string } & Record<string, unknown>): Promise<any> {
   let res: Response;
   try {
     res = await fetch(`${MP_API_BASE}/v1/payments`, {
@@ -62,6 +67,7 @@ async function postPayment(body: Record<string, unknown>, context: Record<string
     });
   } catch (err) {
     console.error("[payments.ts] Erro de rede ao chamar o Mercado Pago:", JSON.stringify({ context, error: String(err) }));
+    await alertFailure({ service: "mercadopago", businessId: context.businessId, error: String(err), context });
     throw new Error("Erro de rede ao se comunicar com o Mercado Pago.");
   }
 
@@ -73,7 +79,9 @@ async function postPayment(body: Record<string, unknown>, context: Record<string
       "[payments.ts] Mercado Pago recusou a requisição:",
       JSON.stringify({ status: res.status, context, request: body, response: errorBody }, null, 2)
     );
-    throw new Error(`Mercado Pago recusou a requisição (${res.status}): ${errorBody?.message ?? errorBody?.error ?? "erro desconhecido"}`);
+    const errorMessage = `Mercado Pago recusou a requisição (${res.status}): ${errorBody?.message ?? errorBody?.error ?? "erro desconhecido"}`;
+    await alertFailure({ service: "mercadopago", businessId: context.businessId, error: errorMessage, context: { ...context, status: res.status } });
+    throw new Error(errorMessage);
   }
 
   return json;
@@ -118,7 +126,7 @@ export async function createPixCharge(params: {
       external_reference: params.appointmentId,
       notification_url: notificationUrl(),
     },
-    { appointmentId: params.appointmentId, businessId: params.businessId, kind: "pix" }
+    { appointmentId: params.appointmentId, businessId: params.businessId, kind: "pix" as const }
   );
 
   const qrCode = payment.point_of_interaction?.transaction_data?.qr_code;
@@ -171,6 +179,7 @@ export async function chargeCard(params: {
   cardToken: string;
   installments: number;
   appointmentId: string;
+  businessId: string;
   /** Bandeira detectada pelo SDK de tokenização do Mercado Pago no frontend (Card Form/Bricks). */
   paymentMethodId?: string;
   payerPhone?: string;
@@ -212,7 +221,7 @@ export async function chargeCard(params: {
       external_reference: params.appointmentId,
       notification_url: notificationUrl(),
     },
-    { appointmentId: params.appointmentId, kind: "card" }
+    { appointmentId: params.appointmentId, businessId: params.businessId, kind: "card" }
   );
 
   const status = mapCardStatus(payment.status);

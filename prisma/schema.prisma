@@ -44,6 +44,7 @@ model Business {
   silentRules   SilentRule[]
   bookingTokens BookingToken[]
   pushSubscriptions PushSubscription[]
+  integrationFailures IntegrationFailure[]
   owner         Owner?
 
   createdAt DateTime @default(now())
@@ -388,6 +389,22 @@ model PushSubscription {
   createdAt  DateTime @default(now())
 
   @@index([businessId])
+}
+
+// Fallback de integrações externas — cada falha real (fora de MOCK_MODE) do
+// WhatsApp, Mercado Pago ou Claude é registrada aqui via src/lib/alerting.ts,
+// pra alimentar o painel "Status das Integrações" em Configurações e disparar
+// aviso proativo ao dono quando o mesmo serviço falha 3x numa hora.
+model IntegrationFailure {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  service    String // "whatsapp" | "mercadopago" | "claude" | "cron"
+  error      String
+  context    Json?
+  occurredAt DateTime @default(now())
+
+  @@index([businessId, service, occurredAt])
 }
 
 // Diferencial 9 — Modo Silencioso: regras automáticas para clientes problemáticos

@@ -6,6 +6,7 @@
  */
 import Anthropic from "@anthropic-ai/sdk";
 import { isMockMode } from "@/lib/mock";
+import { alertFailure } from "@/lib/alerting";
 
 export interface ClaudeBotResponse {
   response: string;
@@ -65,7 +66,7 @@ function mockResponse(userMessage: string): ClaudeBotResponse {
  * Envia a mensagem do cliente + prompt de sistema para o Claude e retorna
  * a resposta já parseada como JSON estruturado (ver prompt.ts para o formato).
  */
-export async function askClaude(systemPrompt: string, userMessage: string, history: any[] = []): Promise<ClaudeBotResponse> {
+export async function askClaude(systemPrompt: string, userMessage: string, history: any[] = [], businessId?: string): Promise<ClaudeBotResponse> {
   const startedAt = Date.now();
 
   if (isMockMode() || !client) {
@@ -98,6 +99,9 @@ export async function askClaude(systemPrompt: string, userMessage: string, histo
   } catch (err) {
     console.error("[claude.ts] Erro ao chamar Claude:", err);
     logClaudeCall({ mock: false, userMessage, model, durationMs: Date.now() - startedAt, error: String(err) });
+    if (businessId) {
+      await alertFailure({ service: "claude", businessId, error: String(err), context: { model, userMessagePreview: userMessage.slice(0, 80) } });
+    }
     return {
       response: "Desculpa, tive um probleminha técnico aqui 😅 Pode repetir sua mensagem ou já te transfiro pro dono.",
       action: "transfer_to_human",

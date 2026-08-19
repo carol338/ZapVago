@@ -11,6 +11,7 @@
 import { createHmac, timingSafeEqual } from "crypto";
 import { isMockMode } from "@/lib/mock";
 import { prisma } from "@/lib/prisma";
+import { alertFailure } from "@/lib/alerting";
 
 const WHATSAPP_API_TOKEN = process.env.WHATSAPP_API_TOKEN;
 const WHATSAPP_PHONE_NUMBER_ID = process.env.WHATSAPP_PHONE_NUMBER_ID;
@@ -81,11 +82,13 @@ export async function sendWhatsAppMessage(to: string, text: string, businessId: 
     const json = await res.json();
     if (!res.ok) {
       console.error(`[whatsapp.ts] Erro ao enviar mensagem (negócio ${businessId}):`, JSON.stringify(json));
+      await alertFailure({ service: "whatsapp", businessId, error: JSON.stringify(json), context: { to, status: res.status } });
       return { success: false, mocked: false, error: JSON.stringify(json) };
     }
     return { success: true, mocked: false, messageId: json.messages?.[0]?.id };
   } catch (err) {
     console.error(`[whatsapp.ts] Erro de rede ao enviar mensagem (negócio ${businessId}):`, err);
+    await alertFailure({ service: "whatsapp", businessId, error: String(err), context: { to } });
     return { success: false, mocked: false, error: String(err) };
   }
 }

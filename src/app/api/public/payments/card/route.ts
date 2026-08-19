@@ -45,6 +45,7 @@ export async function POST(req: NextRequest) {
       amount,
       description: `Agendamento ${appointment.service.name}`,
       appointmentId,
+      businessId: appointment.businessId,
       installments: installments ?? 1,
       cardToken: cardToken ?? "",
       paymentMethodId,
