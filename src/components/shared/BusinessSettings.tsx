@@ -103,9 +103,12 @@ export function BusinessSettings() {
                       workingHours: { ...settings.workingHours, [d.key]: hours ? null : { start: "09:00", end: "19:00" } },
                     })
                   }
-                  className={`h-5 w-9 shrink-0 rounded-full transition-colors ${hours ? "bg-zap" : "bg-surface-border"}`}
+                  aria-pressed={!!hours}
+                  className="-my-3 flex h-11 w-11 shrink-0 items-center justify-center"
                 >
-                  <div className={`h-4 w-4 rounded-full bg-white transition-transform ${hours ? "translate-x-4" : "translate-x-0.5"}`} />
+                  <span className={`h-5 w-9 rounded-full transition-colors ${hours ? "bg-zap" : "bg-surface-border"}`}>
+                    <span className={`block h-4 w-4 rounded-full bg-white transition-transform ${hours ? "translate-x-4" : "translate-x-0.5"}`} />
+                  </span>
                 </button>
                 <span className="w-16 shrink-0 text-sm sm:w-20">{d.label}</span>
                 {hours && (

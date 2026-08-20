@@ -103,8 +103,11 @@ export function ClientTable() {
               ))}
             {!loading && clients.map((c) => (
               <tr key={c.id} className="border-b border-surface-border last:border-0 hover:bg-surface-hover">
-                <td className="p-3">
-                  <Link href={`/dashboard/clients/${c.id}`} className="font-medium text-zap-light hover:underline">
+                <td className="p-0">
+                  <Link
+                    href={`/dashboard/clients/${c.id}`}
+                    className="flex min-h-[44px] items-center px-3 py-3 font-medium text-zap-light hover:underline"
+                  >
                     {c.name}
                   </Link>
                 </td>

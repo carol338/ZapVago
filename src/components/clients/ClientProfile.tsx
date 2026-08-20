@@ -335,7 +335,7 @@ export function ClientProfile({ clientId }: { clientId: string }) {
             onChange={(e) => setNoteText(e.target.value)}
             placeholder="Escreva uma observação sobre esse cliente..."
             rows={2}
-            className="min-h-[44px] w-full rounded-lg border border-surface-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-foreground/40 focus:outline-none focus:ring-2 focus:ring-zap"
+            className="min-h-[44px] w-full rounded-lg border border-surface-border bg-background px-3 py-2 text-base text-foreground placeholder:text-foreground/40 focus:outline-none focus:ring-2 focus:ring-zap"
           />
         </div>
         <Button size="sm" variant="secondary" onClick={addNote} disabled={savingNote || !noteText.trim()} className="mb-3">
