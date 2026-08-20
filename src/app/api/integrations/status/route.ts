@@ -8,16 +8,18 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireBusinessId } from "@/lib/api-auth";
-import { subHours } from "date-fns";
+import { subHours, subMinutes } from "date-fns";
 import type { IntegrationService } from "@/lib/alerting";
 
 const SERVICES: IntegrationService[] = ["whatsapp", "mercadopago", "claude"];
+const DOWN_THRESHOLD_MINUTES = 5;
 
 export async function GET() {
   const businessId = await requireBusinessId();
   if (businessId instanceof NextResponse) return businessId;
 
   const since24h = subHours(new Date(), 24);
+  const since5min = subMinutes(new Date(), DOWN_THRESHOLD_MINUTES);
 
   const status = await Promise.all(
     SERVICES.map(async (service) => {
@@ -28,6 +30,9 @@ export async function GET() {
       return {
         service,
         ok: !lastFailure,
+        // "indisponível agora" (pro alerta vermelho) — diferente de "ok":
+        // uma falha de dias atrás deixa ok=false mas isDown=false.
+        isDown: !!lastFailure && lastFailure.occurredAt >= since5min,
         lastFailureAt: lastFailure?.occurredAt ?? null,
         lastError: lastFailure?.error ?? null,
         count24h,

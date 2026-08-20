@@ -13,7 +13,7 @@
  */
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
-import { subHours } from "date-fns";
+import { subHours, subMinutes } from "date-fns";
 import * as Sentry from "@sentry/nextjs";
 
 export type IntegrationService = "whatsapp" | "mercadopago" | "claude" | "cron";
@@ -61,6 +61,27 @@ export async function alertFailure({ service, businessId, error, context }: Aler
   if (recentCount === ESCALATION_THRESHOLD) {
     await escalateToOwner(service, businessId, recentCount);
   }
+}
+
+const DOWN_THRESHOLD_MINUTES = 5;
+
+/**
+ * "Indisponível agora" pros fallbacks visíveis pro cliente/dono (banner na
+ * página de agendamento, alerta em Configurações): considera o serviço fora
+ * do ar se a falha mais recente registrada aconteceu há menos de 5 minutos.
+ * Não existe sinal de "voltou a funcionar" (só registramos falha, nunca
+ * sucesso) — então o serviço volta a ser considerado "ok" sozinho assim que
+ * essa janela de 5min passa sem falha nova, o que é bom o suficiente pra um
+ * indicador de "provavelmente fora do ar agora", não uma prova formal.
+ */
+export async function isServiceDown(businessId: string, service: IntegrationService): Promise<boolean> {
+  const lastFailure = await prisma.integrationFailure.findFirst({
+    where: { businessId, service },
+    orderBy: { occurredAt: "desc" },
+    select: { occurredAt: true },
+  });
+  if (!lastFailure) return false;
+  return lastFailure.occurredAt >= subMinutes(new Date(), DOWN_THRESHOLD_MINUTES);
 }
 
 async function escalateToOwner(service: IntegrationService, businessId: string, count: number): Promise<void> {

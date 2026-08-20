@@ -148,7 +148,7 @@ async function handleIncomingMessage(businessId: string, clientPhone: string, te
   const visitsForNextReward = client ? await visitsUntilNextReward(businessId, client.loyaltyPoints) : null;
 
   const systemPrompt = buildSystemPrompt({ business, services, professionals, client, visitsForNextReward });
-  const botResult = await askClaude(systemPrompt, text, history, businessId);
+  const botResult = await askClaude(systemPrompt, text, history, businessId, business.name);
 
   // Persiste a conversa com sentimento classificado pelo Claude (Diferencial 4 — Painel de Sentimentos)
   const updatedMessages = [
