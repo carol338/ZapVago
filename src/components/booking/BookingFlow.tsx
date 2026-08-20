@@ -5,11 +5,33 @@
  * /{subdomain}/agendar/{token}. Serviço → profissional → horário → combo
  * → pagamento (Pix/Cartão/Local) → confirmação.
  */
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import Script from "next/script";
 import { addDays, format, isSameDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Check, Copy, CreditCard, Loader2, MessageCircle, Star } from "lucide-react";
 import { formatCurrency, cn } from "@/lib/utils";
+
+// SDK do Mercado Pago (Card Form manual — tokeniza no navegador, o número
+// do cartão NUNCA chega no nosso backend, exigência de PCI compliance do
+// próprio MP). Tipagem mínima só do que usamos.
+interface MercadoPagoSDK {
+  createCardToken(data: {
+    cardNumber: string;
+    cardholderName: string;
+    cardExpirationMonth: string;
+    cardExpirationYear: string;
+    securityCode: string;
+    identificationType: string;
+    identificationNumber: string;
+  }): Promise<{ id: string }>;
+  getPaymentMethods(data: { bin: string }): Promise<{ results: { id: string }[] }>;
+}
+declare global {
+  interface Window {
+    MercadoPago?: new (publicKey: string, opts?: { locale?: string }) => MercadoPagoSDK;
+  }
+}
 
 function formatCardNumber(v: string) {
   const digits = v.replace(/\D/g, "").slice(0, 16);
@@ -20,7 +42,14 @@ function formatExpiry(v: string) {
   return digits.length <= 2 ? digits : `${digits.slice(0, 2)}/${digits.slice(2)}`;
 }
 function formatCvv(v: string) {
-  return v.replace(/\D/g, "").slice(0, 3);
+  return v.replace(/\D/g, "").slice(0, 4);
+}
+function formatCpf(v: string) {
+  const digits = v.replace(/\D/g, "").slice(0, 11);
+  return digits
+    .replace(/(\d{3})(?=\d)/, "$1.")
+    .replace(/(\d{3})(?=\d)/, "$1.")
+    .replace(/(\d{3})(?=\d)/, "$1-");
 }
 
 interface Service {
@@ -106,9 +135,17 @@ export function BookingFlow({
   const [cardName, setCardName] = useState("");
   const [cardExpiry, setCardExpiry] = useState("");
   const [cardCvv, setCardCvv] = useState("");
+  const [cardCpf, setCardCpf] = useState("");
   const [installments, setInstallments] = useState(3);
   const [cardErrors, setCardErrors] = useState<Record<string, string>>({});
   const [cardStage, setCardStage] = useState<"form" | "processing" | "approved">("form");
+
+  // SDK do Mercado Pago — carregado via next/script (ver JSX mais abaixo).
+  // mpInstance só existe depois do script carregar E a public key estar
+  // configurada; sem qualquer um dos dois, a cobrança no cartão é bloqueada
+  // com um erro amigável em vez de travar/quebrar a tela.
+  const mpInstance = useRef<MercadoPagoSDK | null>(null);
+  const [mpStatus, setMpStatus] = useState<"loading" | "ready" | "error">("loading");
 
   const [pix, setPix] = useState<{ appointmentId: string; qrCode: string; expiresAt: string } | null>(null);
   const [pixSecondsLeft, setPixSecondsLeft] = useState(0);
@@ -179,9 +216,67 @@ export function BookingFlow({
     const errors: Record<string, string> = {};
     if (cardNumber.replace(/\s/g, "").length < 16) errors.cardNumber = "Número do cartão precisa ter 16 dígitos.";
     if (cardName.trim().length < 3) errors.cardName = "Informe o nome do titular.";
-    if (!/^\d{2}\/\d{2}$/.test(cardExpiry)) errors.cardExpiry = "Use o formato MM/AA.";
-    if (cardCvv.length !== 3) errors.cardCvv = "O CVV precisa ter 3 dígitos.";
+    if (!/^\d{2}\/\d{2}$/.test(cardExpiry)) {
+      errors.cardExpiry = "Use o formato MM/AA.";
+    } else {
+      const [mm, yy] = cardExpiry.split("/").map(Number);
+      const expYear = 2000 + yy;
+      const now = new Date();
+      const isPast = expYear < now.getFullYear() || (expYear === now.getFullYear() && mm < now.getMonth() + 1);
+      if (mm < 1 || mm > 12) errors.cardExpiry = "Mês inválido.";
+      else if (isPast) errors.cardExpiry = "Cartão vencido.";
+    }
+    if (cardCvv.length < 3 || cardCvv.length > 4) errors.cardCvv = "O CVV precisa ter 3 ou 4 dígitos.";
+    if (cardCpf.replace(/\D/g, "").length !== 11) errors.cardCpf = "Informe um CPF válido (11 dígitos).";
     return errors;
+  }
+
+  /**
+   * Tokeniza o cartão no navegador (número/CVV nunca chegam no nosso
+   * backend) e detecta a bandeira pelo BIN — tudo ANTES de criar o
+   * agendamento, pra não deixar um agendamento pendente órfão se a
+   * tokenização falhar. Lança com uma mensagem já amigável em qualquer
+   * ponto de falha (SDK ausente, MP recusou os dados, rede caiu).
+   */
+  async function tokenizeCard(): Promise<{ cardToken: string; paymentMethodId?: string }> {
+    if (mpStatus !== "ready" || !mpInstance.current) {
+      throw new Error(
+        mpStatus === "error"
+          ? "Não foi possível carregar o sistema de pagamento. Tente pagar no local ou recarregue a página."
+          : "O sistema de pagamento ainda está carregando. Aguarde um instante e tente de novo."
+      );
+    }
+
+    const [mm, yy] = cardExpiry.split("/");
+    let tokenId: string;
+    try {
+      const cardToken = await mpInstance.current.createCardToken({
+        cardNumber: cardNumber.replace(/\s/g, ""),
+        cardholderName: cardName.trim(),
+        cardExpirationMonth: mm,
+        cardExpirationYear: `20${yy}`,
+        securityCode: cardCvv,
+        identificationType: "CPF",
+        identificationNumber: cardCpf.replace(/\D/g, ""),
+      });
+      tokenId = cardToken.id;
+    } catch (err: any) {
+      const detail = err?.cause?.[0]?.description || err?.message;
+      throw new Error(detail ? `Não foi possível validar o cartão: ${detail}` : "Não foi possível validar o cartão. Confira os dados e tente de novo.");
+    }
+
+    // Bandeira detectada pelo BIN (6 primeiros dígitos) — não bloqueia o
+    // pagamento se falhar, só faz o backend cair no fallback dele.
+    let paymentMethodId: string | undefined;
+    try {
+      const bin = cardNumber.replace(/\s/g, "").slice(0, 6);
+      const methods = await mpInstance.current.getPaymentMethods({ bin });
+      paymentMethodId = methods.results?.[0]?.id;
+    } catch {
+      // segue sem paymentMethodId — chargeCard() cai pro fallback "visa"
+    }
+
+    return { cardToken: tokenId, paymentMethodId };
   }
 
   async function handleConfirm() {
@@ -190,6 +285,7 @@ export function BookingFlow({
     // aqui também caso o estado do navegador tenha ficado desatualizado.
     if (mercadopagoDown && paymentMethod !== "local") return;
 
+    let tokenized: { cardToken: string; paymentMethodId?: string } | null = null;
     if (paymentMethod === "card") {
       const errors = validateCard();
       if (Object.keys(errors).length > 0) {
@@ -202,6 +298,9 @@ export function BookingFlow({
     setSubmitting(true);
     setError(null);
     try {
+      if (paymentMethod === "card") {
+        tokenized = await tokenizeCard();
+      }
       const createRes = await fetch("/api/public/appointments", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -225,16 +324,24 @@ export function BookingFlow({
 
       if (paymentMethod === "local") {
         setConfirmed({ serviceName: effectiveService.name, professionalName: professional.name, date: finalDate, paymentLabel: "A pagar no local" });
-      } else if (paymentMethod === "card") {
+      } else if (paymentMethod === "card" && tokenized) {
         setCardStage("processing");
-        await new Promise((r) => setTimeout(r, 2000)); // simula processamento do cartão
         const cardRes = await fetch("/api/public/payments/card", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ appointmentId: created.appointmentId, token, installments }),
+          body: JSON.stringify({
+            appointmentId: created.appointmentId,
+            token,
+            installments,
+            cardToken: tokenized.cardToken,
+            paymentMethodId: tokenized.paymentMethodId,
+          }),
         });
         const cardData = await cardRes.json();
-        if (!cardRes.ok) throw new Error("Pagamento no cartão recusado.");
+        if (cardRes.status === 402 || cardData.status === "rejected") {
+          throw new Error("Cartão recusado pela operadora. Tente outro cartão ou pague no local.");
+        }
+        if (!cardRes.ok) throw new Error(cardData.error ?? "Pagamento no cartão recusado.");
         setCardStage("approved");
         await new Promise((r) => setTimeout(r, 900));
         setConfirmed({ serviceName: effectiveService.name, professionalName: professional.name, date: finalDate, paymentLabel: "Cartão ✅" });
@@ -362,6 +469,20 @@ export function BookingFlow({
   // Formulário principal
   return (
     <div className="min-h-screen bg-[#0A0A0B] pb-8 text-[#FAFAFA]" style={style}>
+      <Script
+        src="https://sdk.mercadopago.com/js/v2"
+        strategy="afterInteractive"
+        onLoad={() => {
+          const publicKey = process.env.NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY;
+          if (!window.MercadoPago || !publicKey) {
+            setMpStatus("error");
+            return;
+          }
+          mpInstance.current = new window.MercadoPago(publicKey, { locale: "pt-BR" });
+          setMpStatus("ready");
+        }}
+        onError={() => setMpStatus("error")}
+      />
       <header className="border-b border-white/10 px-4 py-5 text-center">
         {business.logo ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -619,6 +740,11 @@ export function BookingFlow({
                     <p className="flex items-center gap-2 text-sm font-semibold">
                       <CreditCard size={16} style={{ color: "var(--pub-primary)" }} /> Pagamento com cartão
                     </p>
+                    {mpStatus === "error" && (
+                      <p className="rounded-lg bg-red-500/10 p-2.5 text-xs text-red-400">
+                        Não foi possível carregar o sistema de pagamento agora. Você ainda pode tentar, ou escolher Pix / pagar no local.
+                      </p>
+                    )}
                     <div>
                       <label className="mb-1 block text-xs text-white/50">Número do cartão</label>
                       <input
@@ -663,6 +789,18 @@ export function BookingFlow({
                         />
                         {cardErrors.cardCvv && <p className="mt-1 text-xs text-red-400">{cardErrors.cardCvv}</p>}
                       </div>
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs text-white/50">CPF do titular</label>
+                      <input
+                        inputMode="numeric"
+                        placeholder="000.000.000-00"
+                        value={cardCpf}
+                        onChange={(e) => setCardCpf(formatCpf(e.target.value))}
+                        className="min-h-[44px] w-full rounded-lg border border-white/10 bg-black/30 px-3 text-[#FAFAFA] placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-white/20"
+                      />
+                      {cardErrors.cardCpf && <p className="mt-1 text-xs text-red-400">{cardErrors.cardCpf}</p>}
+                      <p className="mt-1 text-[11px] text-white/30">Exigido pelo Mercado Pago pra validar o pagamento.</p>
                     </div>
                     <div>
                       <label className="mb-1 block text-xs text-white/50">Parcelas</label>
