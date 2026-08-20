@@ -75,6 +75,7 @@ export function BookingFlow({
   services,
   professionals,
   flashSale,
+  integrationStatus,
 }: {
   token: string;
   business: { name: string; slug: string; logo: string | null; colorPrimary: string | null; colorSecondary: string | null; phone: string };
@@ -83,8 +84,10 @@ export function BookingFlow({
   services: Service[];
   professionals: Professional[];
   flashSale?: FlashSaleInfo | null;
+  integrationStatus: { whatsappDown: boolean; mercadopagoDown: boolean };
 }) {
   const primary = business.colorPrimary || "#00A884";
+  const { whatsappDown, mercadopagoDown } = integrationStatus;
 
   const [serviceId, setServiceId] = useState(preselected.serviceId ?? services[0]?.id ?? "");
   const [comboId, setComboId] = useState<string | null>(null);
@@ -93,7 +96,9 @@ export function BookingFlow({
   const [time, setTime] = useState<string | null>(null);
   const [slots, setSlots] = useState<Slot[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<"pix" | "card" | "local">("pix");
+  // Pagamento online indisponível: começa direto em "pagar no local", já
+  // que Pix/Cartão vão aparecer desabilitados mais abaixo.
+  const [paymentMethod, setPaymentMethod] = useState<"pix" | "card" | "local">(mercadopagoDown ? "local" : "pix");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -181,6 +186,9 @@ export function BookingFlow({
 
   async function handleConfirm() {
     if (!effectiveService || !professionalId || !time) return;
+    // Defesa extra: a UI já esconde Pix/Cartão nesse estado, mas garante
+    // aqui também caso o estado do navegador tenha ficado desatualizado.
+    if (mercadopagoDown && paymentMethod !== "local") return;
 
     if (paymentMethod === "card") {
       const errors = validateCard();
@@ -376,6 +384,21 @@ export function BookingFlow({
       </header>
 
       <div className="mx-auto max-w-md space-y-6 px-4 py-6">
+        {(whatsappDown || mercadopagoDown) && (
+          <div className="space-y-2">
+            {whatsappDown && (
+              <div className="rounded-xl border border-yellow-500/30 bg-yellow-500/10 p-3 text-sm text-yellow-400">
+                ⚠️ Estamos com alta demanda. Seu agendamento pode demorar a ser confirmado. Tente novamente em instantes.
+              </div>
+            )}
+            {mercadopagoDown && (
+              <div className="rounded-xl border border-yellow-500/30 bg-yellow-500/10 p-3 text-sm text-yellow-400">
+                ⚠️ Pagamento online temporariamente indisponível. Você pode agendar e pagar no local.
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Serviço */}
         <section>
           <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-white/40">Serviço</h2>
@@ -551,6 +574,7 @@ export function BookingFlow({
           <div className="space-y-2">
             <PaymentOption
               active={paymentMethod === "pix"}
+              disabled={mercadopagoDown}
               onSelect={() => {
                 setPaymentMethod("pix");
                 setCardStage("form");
@@ -561,6 +585,7 @@ export function BookingFlow({
             />
             <PaymentOption
               active={paymentMethod === "card"}
+              disabled={mercadopagoDown}
               onSelect={() => setPaymentMethod("card")}
               label="Cartão em até 3x"
               value={formatCurrency(price)}
@@ -706,32 +731,39 @@ function PaymentOption({
   label,
   value,
   primary,
+  disabled,
 }: {
   active: boolean;
   onSelect: () => void;
   label: string;
   value: string;
   primary: string;
+  disabled?: boolean;
 }) {
   return (
     <button
-      onClick={onSelect}
+      onClick={disabled ? undefined : onSelect}
+      disabled={disabled}
       className={cn(
         "flex min-h-[44px] w-full items-center justify-between rounded-xl border px-4 py-2.5 text-left transition-colors",
-        active ? "border-white/30 bg-white/[0.06]" : "border-white/10 hover:bg-white/[0.03]"
+        disabled
+          ? "cursor-not-allowed border-white/10 opacity-40"
+          : active
+            ? "border-white/30 bg-white/[0.06]"
+            : "border-white/10 hover:bg-white/[0.03]"
       )}
     >
       <span className="flex items-center gap-2 font-medium">
         <span
           className="flex h-4 w-4 items-center justify-center rounded-full border-2"
-          style={{ borderColor: active ? primary : "rgba(255,255,255,0.3)" }}
+          style={{ borderColor: active && !disabled ? primary : "rgba(255,255,255,0.3)" }}
         >
-          {active && <span className="h-2 w-2 rounded-full" style={{ backgroundColor: primary }} />}
+          {active && !disabled && <span className="h-2 w-2 rounded-full" style={{ backgroundColor: primary }} />}
         </span>
         {label}
       </span>
-      <span className="font-semibold" style={{ color: "var(--pub-primary)" }}>
-        {value}
+      <span className="font-semibold" style={{ color: disabled ? "rgba(255,255,255,0.4)" : "var(--pub-primary)" }}>
+        {disabled ? "Indisponível" : value}
       </span>
     </button>
   );

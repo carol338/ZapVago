@@ -18,9 +18,19 @@ const SERVICE_LABEL: Record<string, string> = {
   claude: "Claude AI",
 };
 
+// Só WhatsApp e Mercado Pago têm alerta vermelho dedicado — são os dois que
+// afetam o cliente final diretamente (mensagem não chega, pagamento não
+// processa). Claude AI continua com fallback de conversa (ver claude.ts),
+// então não tem o mesmo alerta aqui.
+const DOWN_MESSAGE: Record<string, string> = {
+  whatsapp: "🔴 WhatsApp fora do ar. Seus clientes não estão recebendo mensagens. Verifique suas credenciais.",
+  mercadopago: "🔴 Mercado Pago fora do ar. Pagamentos online estão desabilitados.",
+};
+
 interface StatusEntry {
   service: string;
   ok: boolean;
+  isDown: boolean;
   lastFailureAt: string | null;
   lastError: string | null;
   count24h: number;
@@ -60,6 +70,11 @@ export function IntegrationStatus() {
                 </span>
               )}
             </div>
+            {s.isDown && DOWN_MESSAGE[s.service] && (
+              <p className="mt-2 rounded-lg bg-risk-high/10 p-2.5 text-xs font-medium text-risk-high">
+                {DOWN_MESSAGE[s.service]}
+              </p>
+            )}
             {s.count24h > 0 && (
               <p className="mt-1 flex items-start gap-1.5 text-xs text-risk-mid">
                 <AlertTriangle size={13} className="mt-0.5 shrink-0" />

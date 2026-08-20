@@ -66,7 +66,7 @@ function mockResponse(userMessage: string): ClaudeBotResponse {
  * Envia a mensagem do cliente + prompt de sistema para o Claude e retorna
  * a resposta já parseada como JSON estruturado (ver prompt.ts para o formato).
  */
-export async function askClaude(systemPrompt: string, userMessage: string, history: any[] = [], businessId?: string): Promise<ClaudeBotResponse> {
+export async function askClaude(systemPrompt: string, userMessage: string, history: any[] = [], businessId?: string, businessName?: string): Promise<ClaudeBotResponse> {
   const startedAt = Date.now();
 
   if (isMockMode() || !client) {
@@ -102,8 +102,11 @@ export async function askClaude(systemPrompt: string, userMessage: string, histo
     if (businessId) {
       await alertFailure({ service: "claude", businessId, error: String(err), context: { model, userMessagePreview: userMessage.slice(0, 80) } });
     }
+    // Mensagem de contingência (Diferencial de fallback): o cliente nunca
+    // fica sem resposta nenhuma — em vez de um erro técnico, uma explicação
+    // que soa como "estamos ocupados", não como "algo quebrou".
     return {
-      response: "Desculpa, tive um probleminha técnico aqui 😅 Pode repetir sua mensagem ou já te transfiro pro dono.",
+      response: `Desculpe, estamos com alta demanda. ${businessName ?? "Nosso time"} já vai te responder pessoalmente. Obrigado pela paciência!`,
       action: "transfer_to_human",
       sentiment: "neutral",
       language: "pt-BR",

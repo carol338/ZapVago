@@ -6,6 +6,7 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
+import { isServiceDown } from "@/lib/alerting";
 import { BookingFlow } from "@/components/booking/BookingFlow";
 
 async function getBookingData(subdomain: string, token: string, flashSaleId?: string) {
@@ -17,7 +18,7 @@ async function getBookingData(subdomain: string, token: string, flashSaleId?: st
   if (bookingToken.expiresAt < new Date()) return { notFoundReason: "expired" as const };
   if (!bookingToken.client) return { notFoundReason: "invalid" as const };
 
-  const [services, professionals, flashSale] = await Promise.all([
+  const [services, professionals, flashSale, whatsappDown, mercadopagoDown] = await Promise.all([
     prisma.service.findMany({ where: { businessId: bookingToken.businessId, active: true }, orderBy: { order: "asc" } }),
     prisma.professional.findMany({ where: { businessId: bookingToken.businessId, active: true } }),
     flashSaleId
@@ -25,10 +26,13 @@ async function getBookingData(subdomain: string, token: string, flashSaleId?: st
           where: { id: flashSaleId, businessId: bookingToken.businessId, active: true, endDate: { gte: new Date() } },
         })
       : null,
+    isServiceDown(bookingToken.businessId, "whatsapp"),
+    isServiceDown(bookingToken.businessId, "mercadopago"),
   ]);
 
   return {
     notFoundReason: null,
+    integrationStatus: { whatsappDown, mercadopagoDown },
     business: {
       name: bookingToken.business.name,
       slug: bookingToken.business.slug,
@@ -113,6 +117,7 @@ export default async function BookingPage({
       services={data.services!}
       professionals={data.professionals!}
       flashSale={data.flashSale}
+      integrationStatus={data.integrationStatus!}
     />
   );
 }
