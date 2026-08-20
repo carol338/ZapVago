@@ -46,6 +46,7 @@ async function main() {
       name: "Barbearia do Zé",
       slug: "barbearia-do-ze",
       plan: Plan.BUSINESS,
+      isTestAccount: true, // dado de demo/dev — nunca deve entrar nos crons de relatório
       category: Category.BARBER,
       phone: "5511988887777",
       address: "Rua das Tesouras, 123 - São Paulo, SP",
