@@ -21,6 +21,7 @@ model Business {
   whatsappConnected      Boolean   @default(false)
   whatsappProviderConfig Json?
   plan                   Plan      @default(FREE) // limites/features em src/lib/plan-limits.ts
+  isTestAccount          Boolean   @default(false) // exclui dos crons de relatório (ver /api/cron/monthly-report) — nunca marcado em conta real
 
   // Página pública (vitrine do negócio)
   logo           String?
