@@ -19,8 +19,11 @@ export async function POST(req: NextRequest) {
     appointmentId: string;
     token: string;
     installments?: number;
-    // Gerados pelo SDK de tokenização do Mercado Pago no frontend (Card Form/Bricks) —
-    // ainda não implementado na página pública, por isso são opcionais por enquanto.
+    // Gerados no navegador pelo SDK de tokenização do Mercado Pago (ver
+    // src/components/booking/BookingFlow.tsx) — number de cartão/CVV nunca
+    // chegam aqui. Continuam opcionais no tipo pra não quebrar chamadas
+    // antigas/externas sem token; sem cardToken, chargeCard() já lança um
+    // erro claro (ver payments.ts).
     cardToken?: string;
     paymentMethodId?: string;
   };
