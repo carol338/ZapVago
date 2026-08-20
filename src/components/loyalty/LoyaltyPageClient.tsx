@@ -98,9 +98,12 @@ export function LoyaltyPageClient() {
                   type="button"
                   onClick={() => toggleActive(r)}
                   disabled={togglingId === r.id}
-                  className={`h-5 w-9 shrink-0 rounded-full transition-colors disabled:opacity-50 ${r.active !== false ? "bg-zap" : "bg-surface-border"}`}
+                  aria-pressed={r.active !== false}
+                  className="-my-3 flex h-11 w-11 shrink-0 items-center justify-center disabled:opacity-50"
                 >
-                  <div className={`h-4 w-4 rounded-full bg-white transition-transform ${r.active !== false ? "translate-x-4" : "translate-x-0.5"}`} />
+                  <span className={`h-5 w-9 rounded-full transition-colors ${r.active !== false ? "bg-zap" : "bg-surface-border"}`}>
+                    <span className={`block h-4 w-4 rounded-full bg-white transition-transform ${r.active !== false ? "translate-x-4" : "translate-x-0.5"}`} />
+                  </span>
                 </button>
                 <span className="text-sm text-foreground/60">{r.active !== false ? "Ativa" : "Inativa"}</span>
               </div>

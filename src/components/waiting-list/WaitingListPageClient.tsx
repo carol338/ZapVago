@@ -157,7 +157,7 @@ export function WaitingListPageClient() {
                   <Button size="sm" variant="secondary" onClick={() => notify(entry.id)} disabled={busyId === entry.id}>
                     <Bell size={14} className="mr-1" /> Notificar
                   </Button>
-                  <Button size="sm" variant="danger" onClick={() => remove(entry.id)} disabled={busyId === entry.id}>
+                  <Button size="sm" variant="danger" className="w-11 shrink-0 px-0" onClick={() => remove(entry.id)} disabled={busyId === entry.id}>
                     <Trash2 size={14} />
                   </Button>
                 </div>

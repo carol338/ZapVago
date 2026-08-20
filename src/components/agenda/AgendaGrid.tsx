@@ -161,13 +161,13 @@ export function AgendaGrid({ features }: { features: Record<Feature, boolean> })
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
         <div className="flex items-center justify-center gap-2 sm:justify-start">
-          <Button variant="secondary" size="sm" onClick={() => setWeekStart(subWeeks(weekStart, 1))}>
+          <Button variant="secondary" size="sm" className="w-11 shrink-0 px-0" onClick={() => setWeekStart(subWeeks(weekStart, 1))}>
             <ChevronLeft size={16} />
           </Button>
           <span className="min-w-[160px] text-center text-sm font-medium sm:min-w-[180px]">
             {format(weekStart, "dd/MM", { locale: ptBR })} — {format(addDays(weekStart, 6), "dd/MM/yyyy", { locale: ptBR })}
           </span>
-          <Button variant="secondary" size="sm" onClick={() => setWeekStart(addWeeks(weekStart, 1))}>
+          <Button variant="secondary" size="sm" className="w-11 shrink-0 px-0" onClick={() => setWeekStart(addWeeks(weekStart, 1))}>
             <ChevronRight size={16} />
           </Button>
         </div>
@@ -276,7 +276,7 @@ export function AgendaGrid({ features }: { features: Record<Feature, boolean> })
                   <button
                     key={hour}
                     onClick={() => setNewModalDate(setMinutes(setHours(mobileDay, Math.floor(hour)), (hour % 1) * 60))}
-                    className="flex min-h-[36px] w-full items-center gap-3 rounded-md px-2 text-left text-xs text-foreground/30 hover:bg-surface-hover"
+                    className="flex min-h-[44px] w-full items-center gap-3 rounded-md px-2 text-left text-xs text-foreground/30 hover:bg-surface-hover"
                   >
                     <span className="w-12 shrink-0 text-foreground/40">{hourLabel(hour)}</span>
                     <span className="h-px flex-1 bg-surface-border" />

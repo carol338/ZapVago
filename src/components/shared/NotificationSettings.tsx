@@ -101,9 +101,12 @@ export function NotificationSettings() {
               <button
                 type="button"
                 onClick={() => toggle(ev.key)}
-                className={`h-5 w-9 shrink-0 rounded-full transition-colors ${active ? "bg-zap" : "bg-surface-border"}`}
+                aria-pressed={active}
+                className="-my-3 flex h-11 w-11 shrink-0 items-center justify-center"
               >
-                <div className={`h-4 w-4 rounded-full bg-white transition-transform ${active ? "translate-x-4" : "translate-x-0.5"}`} />
+                <span className={`h-5 w-9 rounded-full transition-colors ${active ? "bg-zap" : "bg-surface-border"}`}>
+                  <span className={`block h-4 w-4 rounded-full bg-white transition-transform ${active ? "translate-x-4" : "translate-x-0.5"}`} />
+                </span>
               </button>
               <span className="text-sm">{ev.label}</span>
             </div>

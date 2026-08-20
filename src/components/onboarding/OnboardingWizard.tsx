@@ -314,9 +314,12 @@ export function OnboardingWizard({ category }: { category: string }) {
                       [d.key]: prev[d.key] ? null : { start: "09:00", end: "19:00" },
                     }))
                   }
-                  className={`h-5 w-9 shrink-0 rounded-full transition-colors ${workingHours[d.key] ? "bg-zap" : "bg-surface-border"}`}
+                  aria-pressed={!!workingHours[d.key]}
+                  className="-my-3 flex h-11 w-11 shrink-0 items-center justify-center"
                 >
-                  <div className={`h-4 w-4 rounded-full bg-white transition-transform ${workingHours[d.key] ? "translate-x-4" : "translate-x-0.5"}`} />
+                  <span className={`h-5 w-9 rounded-full transition-colors ${workingHours[d.key] ? "bg-zap" : "bg-surface-border"}`}>
+                    <span className={`block h-4 w-4 rounded-full bg-white transition-transform ${workingHours[d.key] ? "translate-x-4" : "translate-x-0.5"}`} />
+                  </span>
                 </button>
                 <span className="w-16 shrink-0 text-sm sm:w-20">{d.label}</span>
                 {workingHours[d.key] && (
