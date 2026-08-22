@@ -181,6 +181,10 @@ export function OnboardingWizard({ category }: { category: string }) {
       );
     }
 
+    // Painel vazio confunde quem tá vendo o ZapVago pela primeira vez — cria
+    // alguns clientes/agendamentos de exemplo pra já ter o que olhar.
+    await fetch("/api/onboarding/demo-data", { method: "POST" }).catch(() => {});
+
     router.push("/dashboard");
   }
 
