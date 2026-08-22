@@ -74,7 +74,8 @@ export interface LimitCheck {
  * mês", não de "quantos horários você tem em determinado mês"), incluindo
  * cancelados: um agendamento criado e depois cancelado ainda consumiu uma
  * criação — contar só os não-cancelados abriria brecha pra criar/cancelar
- * em loop pra furar o limite.
+ * em loop pra furar o limite. Exclui os agendamentos fake do seed pós-
+ * onboarding (isDemo) — eles não devem consumir o limite do dono.
  */
 export async function canCreateAppointment(businessId: string): Promise<LimitCheck> {
   const plan = await getBusinessPlan(businessId);
@@ -83,7 +84,7 @@ export async function canCreateAppointment(businessId: string): Promise<LimitChe
 
   const now = new Date();
   const used = await prisma.appointment.count({
-    where: { businessId, createdAt: { gte: startOfMonth(now), lte: endOfMonth(now) } },
+    where: { businessId, isDemo: false, createdAt: { gte: startOfMonth(now), lte: endOfMonth(now) } },
   });
   return { allowed: used < limit, plan, limit, used };
 }

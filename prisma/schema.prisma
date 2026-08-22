@@ -22,6 +22,7 @@ model Business {
   whatsappProviderConfig Json?
   plan                   Plan      @default(FREE) // limites/features em src/lib/plan-limits.ts
   isTestAccount          Boolean   @default(false) // exclui dos crons de relatório (ver /api/cron/monthly-report) — nunca marcado em conta real
+  demoSeededAt           DateTime? // quando os dados de demonstração pós-onboarding foram criados (ou tentados) — impede recriação, mesmo depois de excluídos
 
   // Página pública (vitrine do negócio)
   logo           String?
@@ -132,6 +133,7 @@ model Client {
   notes      String?
   tags       String[] // "vip", "fiel", "novo", "sumido", "problema"
   alergias   String[] // "amônia", "látex", "parabenos"
+  isDemo     Boolean  @default(false) // cliente fake criado pelo seed pós-onboarding (ver /api/onboarding/demo-data)
 
   // preferencias: { professionalPreference, servicePreference, bestDays, bestTimes }
   preferencias Json @default("{}")
@@ -189,6 +191,7 @@ model Appointment {
   status  Status   @default(CONFIRMED)
   notes   String?
   source  Source   @default(WHATSAPP)
+  isDemo  Boolean  @default(false) // agendamento fake criado pelo seed pós-onboarding (ver /api/onboarding/demo-data)
 
   // "pending" (marcado antes de enviar, protege contra duplicata se o
   // processo cair no meio) | "sent" | "failed" (WhatsApp recusou/caiu —
