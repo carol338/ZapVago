@@ -3,7 +3,11 @@ const { withSentryConfig } = require("@sentry/nextjs");
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  eslint: { ignoreDuringBuilds: true },
+  // Lint agora está configurado (.eslintrc.json) e limpo — 0 erros, só 4
+  // avisos react-hooks/exhaustive-deps benignos (efeitos que leem um valor
+  // de propósito sem re-rodar quando ele muda). Warnings não derrubam o
+  // build, só erros — então é seguro deixar rodando aqui.
+  eslint: { ignoreDuringBuilds: false },
 };
 
 // withSentryConfig só faz upload de source maps (pra stack traces legíveis
