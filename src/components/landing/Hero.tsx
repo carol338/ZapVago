@@ -55,13 +55,13 @@ export function Hero() {
                 Quero minha agenda lotada <ArrowRight size={18} className="ml-1.5" />
               </Button>
             </Link>
-            <Link href="#demonstracao">
+            <Link href="/demo">
               <Button
                 variant="secondary"
                 size="lg"
                 className="min-h-[52px] w-full whitespace-nowrap border border-surface-border px-8 text-base sm:w-auto"
               >
-                Ver como funciona (2 min)
+                Ver demonstração
               </Button>
             </Link>
           </div>
