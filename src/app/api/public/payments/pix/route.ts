@@ -22,7 +22,15 @@ export async function POST(req: NextRequest) {
   const bookingToken = await prisma.bookingToken.findUnique({ where: { token } });
   const appointment = await prisma.appointment.findUnique({ where: { id: appointmentId }, include: { service: true } });
 
-  if (!bookingToken || !appointment || appointment.businessId !== bookingToken.businessId) {
+  // Confere não só o negócio, mas o CLIENTE dono do token — sem isso, alguém
+  // com um token válido (mas de um agendamento próprio) poderia pagar/mexer
+  // no agendamento de outro cliente do mesmo negócio só sabendo o id dele.
+  if (
+    !bookingToken ||
+    !appointment ||
+    appointment.businessId !== bookingToken.businessId ||
+    (bookingToken.clientId && appointment.clientId !== bookingToken.clientId)
+  ) {
     return NextResponse.json({ error: "Agendamento não encontrado." }, { status: 404 });
   }
   if (appointment.paymentStatus === "PAID") {
