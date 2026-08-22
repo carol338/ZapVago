@@ -8,8 +8,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { randomBytes } from "crypto";
 import { prisma } from "@/lib/prisma";
 import { normalizePhone } from "@/lib/whatsapp";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 
 export async function POST(req: NextRequest, { params }: { params: { subdomain: string } }) {
+  const ip = getClientIp(req.headers);
+  const ipCheck = await checkRateLimit(`start-booking:ip:${ip}`, 10, 60 * 60);
+  if (!ipCheck.allowed) {
+    return NextResponse.json({ error: "Muitas tentativas. Tente novamente em alguns minutos." }, { status: 429 });
+  }
+
   const business = await prisma.business.findUnique({ where: { slug: params.subdomain } });
   if (!business) {
     return NextResponse.json({ error: "Negócio não encontrado." }, { status: 404 });
@@ -25,6 +32,14 @@ export async function POST(req: NextRequest, { params }: { params: { subdomain: 
   const cleanPhone = normalizePhone(phone);
   if (cleanPhone.length < 10) {
     return NextResponse.json({ error: "Número de WhatsApp inválido." }, { status: 400 });
+  }
+
+  // Limite por telefone, à parte do limite por IP — evita que alguém reescreva
+  // repetidamente o nome de um cliente real (ou crie tokens em nome dele) só
+  // trocando de IP.
+  const phoneCheck = await checkRateLimit(`start-booking:phone:${cleanPhone}`, 5, 60 * 60);
+  if (!phoneCheck.allowed) {
+    return NextResponse.json({ error: "Muitas tentativas para esse número. Tente novamente em alguns minutos." }, { status: 429 });
   }
 
   if (serviceId) {
