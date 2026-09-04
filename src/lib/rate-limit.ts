@@ -56,12 +56,26 @@ export interface RateLimitResult {
   remaining: number;
 }
 
-/** Verifica e consome uma tentativa da chave dada, dentro do limite/janela informados. */
+/**
+ * Verifica e consome uma tentativa da chave dada, dentro do limite/janela
+ * informados. Falha aberto (libera a tentativa) se o Upstash der erro —
+ * ex: credenciais erradas/ausentes na Vercel, instabilidade momentânea da
+ * API deles. Login e cadastro chamam isso ANTES de qualquer try/catch
+ * próprio (é a primeira coisa que a rota faz), então uma exceção daqui
+ * derrubava a função inteira sem devolver resposta nenhuma pro navegador
+ * — rate limit é uma proteção auxiliar, nunca pode ser o motivo de
+ * ninguém conseguir criar conta ou logar.
+ */
 export async function checkRateLimit(key: string, limit: number, windowSeconds: number): Promise<RateLimitResult> {
   if (redis) {
-    const limiter = getUpstashLimiter(limit, windowSeconds);
-    const result = await limiter.limit(key);
-    return { allowed: result.success, remaining: result.remaining };
+    try {
+      const limiter = getUpstashLimiter(limit, windowSeconds);
+      const result = await limiter.limit(key);
+      return { allowed: result.success, remaining: result.remaining };
+    } catch (err) {
+      console.error("[rate-limit] Upstash falhou, liberando a tentativa (fail-open):", err);
+      return checkMemoryRateLimit(key, limit, windowSeconds);
+    }
   }
   return checkMemoryRateLimit(key, limit, windowSeconds);
 }

@@ -36,10 +36,16 @@ export const authOptions: NextAuthOptions = {
           throw new Error("Muitas tentativas para este e-mail. Aguarde alguns minutos e tente novamente.");
         }
 
-        const owner = await prisma.owner.findUnique({
-          where: { email: credentials.email },
-          include: { business: true },
-        });
+        let owner;
+        try {
+          owner = await prisma.owner.findUnique({
+            where: { email: credentials.email },
+            include: { business: true },
+          });
+        } catch (err) {
+          console.error("[auth] Falha ao consultar o banco no login:", err);
+          throw new Error("Não foi possível conectar ao banco de dados. Tente novamente em instantes.");
+        }
         if (!owner) return null;
 
         const valid = await bcrypt.compare(credentials.password, owner.password);
